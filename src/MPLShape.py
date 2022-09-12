@@ -32,18 +32,29 @@ class MPLShape():
     }
     EDGE_LINE_WIDTH = 2
 
-    def __init__(self, args, which, sample_dic):
+    def __init__(self, args, which, sample, connector_mode=False):
         """create MPL attributes from DDS attributes"""
+        #TODO:  drop connector_mode once API is working
         self.which = which
-        self.xy = (sample_dic['x'], args.graphy - sample_dic['y'])
-        self.size = sample_dic['shapesize'] / 2
-        self.color = self.COLOR_MAP[sample_dic['color']]
-        if args.extended: 
-            self.angle = sample_dic.get('angle', 0)
-            self.fillKind = sample_dic.get('fillKind', 0)
+        self.angle = 0
+        self.fillKind = 0
+
+        if connector_mode:
+            sample_dic = sample
+            self.xy = (sample_dic['x'], args.graphy - sample_dic['y'])
+            self.size = sample_dic['shapesize'] / 2
+            self.color = self.COLOR_MAP[sample_dic['color']]
+            if args.extended: 
+                self.angle = sample_dic.get('angle', 0)
+                self.fillKind = sample_dic.get('fillKind', 0)
         else:
-            self.angle = 0
-            self.fillKind = 0
+            self.xy = (sample.data['x'], args.graphy - sample.data['y'])
+            self.size = sample.data['shapesize'] / 2
+            self.color = self.COLOR_MAP[sample.data['color']]
+            if args.extended: 
+                self.angle = sample.data.get('angle', 0)
+                self.fillKind = sample.data.get('fillKind', 0)
+        LOG.debug(f'created {self=}')
 
 
     def rotate(self, xy, radians, orig_x, orig_y):
@@ -88,10 +99,8 @@ class MPLShape():
         if self.fillKind == 1: # transparent
             return 'w', 'b'
 
-        if self.color == 'r':
-            ec = 'b'
-        else:
-            ec = 'r'
+        ec = 'r' if self.color == 'b' else 'b'
+        LOG.info(f'{self=} {ec=} {fc=}')
         return fc, ec
 
     HATCH_MAP = {0:None, 1:None, 2: "--", 3: "||"}
@@ -99,11 +108,11 @@ class MPLShape():
     def create_circle_polygon(self):
         """return a CirclePolygon"""
         LOG.debug(f'{ec=} {self.EDGE_LINE_WIDTH=}')
-        return CirclePolygon(self.xy, radius=self.size)
+        return CirclePolygon(self.xy, radius=self.size/2)
     
     def create_circle(self):
         """return a circle """
-        return Circle(self.xy, radius=self.size)
+        return Circle(self.xy, radius=self.size/2)
 
     def create_square(self):
         """return a square, avoid Rectangle whose coords are diff from Triangle"""
@@ -126,7 +135,7 @@ class MPLShape():
             poly = self.create_circle_polygon()
         else:
             LOG.error(f"unknown shape type {self=}")
-            poly = None
+            return None
         fc, ec = self.get_face_and_edge_color()
         poly.set(ec=ec, fc=fc, hatch=self.HATCH_MAP[self.fillKind], lw=self.EDGE_LINE_WIDTH)
         return poly

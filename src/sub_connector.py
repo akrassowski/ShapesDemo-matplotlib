@@ -106,7 +106,7 @@ def main(args):
                 if handle_input_count < 10:
                     LOG.info(f'SAMPLE == {sample.get_dictionary()=}')
                 guid, sample_id = get_sample_id(sample)
-                mpl_shape = MPLShape(args, which, sample.get_dictionary())
+                mpl_shape = MPLShape(args, which, sample.get_dictionary(), connector_mode=True)
                 poly = poly_dic.get(guid)
                 if not poly:
                     poly = mpl_shape.create_poly()
