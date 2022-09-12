@@ -15,13 +15,15 @@
 import argparse
 import logging
 import math
+import os 
 from os import path as os_path
 import sys
 import time
 
 # animation imports
 import matplotlib
-matplotlib.use('Qt5Agg')
+if not os.name == 'nt':
+    matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -72,13 +74,17 @@ def create_matplot(args, name):
 
     # get the x, y, dx, dy
     mngr = plt.get_current_fig_manager()
-    x, y, dx, dy = mngr.window.geometry().getRect()
+    if os.name == 'nt':
+        x, y, dx, dy = 0, 0, 500, 500
+    else:
+        x, y, dx, dy = mngr.window.geometry().getRect()
     HGAP, VGAP = 30, 85
     Y, HSP = VGAP + dy, HGAP+5
     coord = [ (0, 0), (dx+HGAP, 0), (2*dx+HSP, 0), (0, Y), (dx+HGAP, Y), (2*dx+HSP, Y) ]
     x, y = coord[args.index-1]
     LOG.debug(f'{x=}, {y=}')
-    mngr.window.setGeometry(x, y, int(dx), int(dy))
+    if os.name != 'nt':
+        mngr.window.setGeometry(x, y, int(dx), int(dy))
 
     return fig, axes
 
