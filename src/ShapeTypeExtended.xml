@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/6.1.1/rti_dds_qos_profiles.xsd" version="6.1.1">
+  <type_library name="shape_lib">
+
+    <struct name="ShapeType" extensibility="extensible">
+      <member name="color" stringMaxLength="128" type="string" key="true"/>
+      <member name="x" type="long"/>
+      <member name="y" type="long"/>
+      <member name="shapesize" type="long"/>
+    </struct>
+
+    <enum name="ShapeFillKind" extensibility="extensible">
+      <enumerator name="SOLID_FILL" value="0"/>
+      <enumerator name="TRANSPARENT_FILL" value="1"/>
+      <enumerator name="HORIZONTAL_HATCH_FILL" value="2"/>
+      <enumerator name="VERTICAL_HATCH_FILL" value="3"/>
+    </enum>
+
+    <struct name="ShapeTypeExtended" baseType="ShapeType" extensibility="extensible">
+      <member name="fillKind" type="nonBasic" nonBasicTypeName="ShapeFillKind"/>
+      <member name="angle" type="float"/>
+    </struct>
+
+  </type_library>
+</dds>
