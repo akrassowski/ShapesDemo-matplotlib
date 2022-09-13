@@ -52,12 +52,12 @@ class MPLShape():
                 self.angle = sample_dic.get('angle', 0)
                 self.fillKind = sample_dic.get('fillKind', 0)
         else:
-            self.xy = (sample.data['x'], args.graphy - sample.data['y'])
-            self.size = sample.data['shapesize'] / 2
-            self.color = COLOR_MAP[sample.data['color']]
+            self.xy = (sample.data.x, args.graphy - sample.data.y)
+            self.size = sample.data.shapesize / 2
+            self.color = COLOR_MAP[sample.data.color]
             if args.extended:
-                self.angle = sample.data.get('angle', 0)
-                self.fillKind = sample.data.get('fillKind', 0)
+                self.angle = sample.data.angle
+                self.fillKind = sample.data.fillKind
         LOG.debug(f'created {self=}')
 
 

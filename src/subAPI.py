@@ -13,15 +13,18 @@
 
 # python imports
 import argparse
+import copy
 import logging
 import math
+import os
 from os import path as os_path
 import sys
 import time
 
 # animation imports
 import matplotlib
-matplotlib.use('Qt5Agg')
+if os.name != 'nt':
+    matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -32,7 +35,38 @@ import rti.connextdds as dds
 from MPLShape import MPLShape
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
+
+class SampleInfo:
+    def __init__(self, loaned_info):
+        self.source_guid = loaned_info.source_guid # read-only, not passed into matplotlib
+        self.reception_sequence_number = loaned_info.reception_sequence_number
+        self.valid = loaned_info.valid
+
+    def __repr__(self):
+        return f'{{source_guid: {self.source_guid} reception_seq#: {self.reception_sequence_number} valid: {self.valid}}} '
+
+
+class SampleData:
+    def __init__(self, loaned_data):
+        self.x = loaned_data['x']
+        self.y = loaned_data['y']
+        self.color = loaned_data['color']
+        self.shapesize = loaned_data['shapesize']
+        self.fillKind = None # = loaned_data.get('fillKind'))
+        self.angle = None #loaned_data.get('angle')
+
+    def __repr__(self):
+        return f'{{xy: {self.x},{self.y} color: {self.color} size: {self.shapesize} fill: {self.fillKind} angle: {self.angle}}} '
+
+class Sample:
+    def __init__(self, loaned):
+        self.info = SampleInfo(loaned.info)
+        self.data = SampleData(loaned.data)
+
+    def __repr__(self):
+        return f'{{data: {self.data} info: {self.info}}} '
+
 
 def correctAspect(axes):
     """needed for round circles"""
@@ -76,33 +110,33 @@ def init_dds(domain_id, extended=True):
     participant = dds.DomainParticipant(domain_id) 
     subscriber = dds.Subscriber(participant)
 
-    #qos_file = os_path.dirname(os_path.realpath(__file__)) + "/ShapeTypeExtended.xml"
     qos_file = os_path.dirname(os_path.realpath(__file__)) + "/SimpleShapeExample.xml"
     provider = dds.QosProvider(qos_file)
 
     type_name = "ShapeTypeExtended" if extended else "ShapeType"
     provider_type = provider.type(type_name)
 
+    circle_topic = dds.DynamicData.Topic(participant, "Circle", provider_type)
     square_topic = dds.DynamicData.Topic(participant, "Square", provider_type)
     triangle_topic = dds.DynamicData.Topic(participant, "Triangle", provider_type)
 
 
     # DataReader QoS is configured in USER_QOS_PROFILES.xml
+    reader_dic['C'] = dds.DynamicData.DataReader(subscriber, circle_topic)
     reader_dic['S'] = dds.DynamicData.DataReader(subscriber, square_topic)
     reader_dic['T'] = dds.DynamicData.DataReader(subscriber, triangle_topic)
-
-    r = reader_dic['S']
-    with r.read() as samples:
-        for s in samples:
-            LOG.info(f'{s=}')
 
     return reader_dic
 
     
 def main(args):
 
+    global axes, handle_input_count, old_samples, poly_dic
     poly_dic = {}
+    handle_input_count = 0
+    old_samples = {'C': [], 'S': [], 'T': []}
 
+    fig, axes = create_matplot(args, f"ShapeSubscriber Domain:{args.domain_id} Slot: {args.index}")
     # fig.suptitle("")
 
     reader_dic = init_dds(args.domain_id, args.extended)
@@ -114,20 +148,25 @@ def main(args):
         return guid, (guid, seq)
     
     def _process_sample(sample, which):
-        global handle_input_count
-        if handle_input_count < 10 and sample:
+        global axes, poly_dic
+        if args.justdds:
+            return
+
+        if sample:
             d = sample.data
-            #breakpoint()
-            LOG.info(f'SAMPLE: {d["color"]=} {d["x"]=}')
-        if sample and sample.info.valid:
+            LOG.debug(f'SAMPLE: {d.color=} {d.x=}')
             guid, sample_id = _get_sample_id(sample)
             mpl_shape = MPLShape(args, which, sample)
             poly = poly_dic.get(guid)
             if not poly:
-                poly = mpl_shape.create_poly()
+                if args.justdds:
+                    poly = None
+                else:
+                    poly = mpl_shape.create_poly()
                 poly_dic[guid] = poly
                 LOG.info(f'added {guid=}, {mpl_shape.color=}')
-                axes.add_patch(poly)
+                if not args.justdds:
+                    axes.add_patch(poly)
 
             LOG.debug(f'got {sample_id=} \n{poly_dic.values()=}')
             xy = mpl_shape.get_points()
@@ -140,43 +179,40 @@ def main(args):
             else:
                 poly.set_xy(xy)
 
-        #LOG.debug(f'{sample_count=}')
-        #time.sleep(1)
-        LOG.info(f'return {poly_dic.values()=}')
         return poly_dic.values()
 
-    if 1 == 1:
+
+    def do_read(reader, which):
+        """handle the sample input, return the list of shapes"""
         global handle_input_count, old_samples
-        handle_input_count = 0
-        old_samples = {'C': [], 'S': [], 'T': []}
+        handle_input_count += 1
+        LOG.debug(f'{which=} {old_samples[which]=} ')
+        ##if handle_input_count > 100: 
+            ##sys.exit(0)
 
-        def do_read(reader, which):
-            """handle the sample input, return the list of shapes"""
-            global handle_input_count, old_samples
-            handle_input_count += 1
-            LOG.info(f'{which=} {old_samples[which]=} ')
-            if handle_input_count > 100: 
-                sys.exit(0)
+        # select any leftover samples then first of new take()
+        my_sample = {}
+        if len(old_samples[which]) > 0:
+            my_sample = old_samples[which].pop()
+        else:
+            with reader.read_valid() as samples:
+                first = True
+                for sample in samples:
+                    LOG.debug(f'{first=} {sample=} ')
+                    if first:
+                        #my_sample = copy.deepcopy(sample)
+                        LOG.debug(f'{sample.info=} {sample.data=}')
+                        my_sample = Sample(sample)
+                        first = False
+                    else:
+                        old_samples[which].append(Sample(sample))
+                        LOG.debug(f'ADDED {old_samples=}')
+        LOG.debug(f'{my_sample=}')
+        """if my_sample:
+            d = my_sample.data
+            LOG.info(f'SAMPLE {d.x=} {d.y=} {d.color=}')"""
 
-            # select any leftover samples then first of new take()
-            my_sample = None
-            if len(old_samples[which]) > 0:
-                my_sample = old_samples[which].pop()
-            else:
-                with reader.read() as samples:
-                    first = True
-                    for sample in samples:
-                        LOG.info(f'{first=} {sample=} ')
-                        if first:
-                            my_sample = sample
-                            first = False
-                        else:
-                            old_samples[which].append(sample)
-                            LOG.info(f'ADDED {old_samples=}')
-            if my_sample:
-                d = my_sample.data
-                LOG.info(f'SAMPLE {d["x"]=} {d["y"]=} {d["color"]=}')
-            _process_sample(my_sample, which)
+        _process_sample(my_sample, which)
  
 
     def read_and_draw(_frame):
@@ -195,32 +231,21 @@ def main(args):
         return poly_dic.values()  # give back the updated values so they are rendered
 
 
-    ### inline test
-    time.sleep(5)
-    rdr = reader_dic['S']
-    with rdr.take() as samples:
-        for s in samples:
-            print(s)
-            if s.info.valid:
-                print(f'{s.data["x"]=} {s.data["color"]=}')
-            else:
-                print('invalid')
-
-    fig, axes = create_matplot(args, f"ShapeSubscriber Domain:{args.domain_id} {args.index}")
-
- 
-    '''if args.dds:
-        for i in range(args.dds):
+    if args.justdds:
+        LOG.info(f'RUNNING {args.justdds=} reads')
+        for i in range(args.justdds):
             read_and_draw(10)
-            time.sleep(0.01)
-        sys.exit(0)'''
+            LOG.info(f'{i=} of {args.justdds=}')
+            time.sleep(0.001)
+        sys.exit(0)
 
     # Create the animation and show
-    LOG.debug("Calling FuncAnimation which calls read_and_draw")
-    ani = FuncAnimation(fig, read_and_draw, interval=20, blit=False)
+    else:
+        LOG.debug("Calling FuncAnimation which calls read_and_draw")
+        ani = FuncAnimation(fig, read_and_draw, interval=10, blit=False)
 
-    # Show the image and block until the window is closed
-    plt.show()
+        # Show the image and block until the window is closed
+        plt.show()
     LOG.info("Exiting...")
 
 def parse_args(args):
@@ -242,7 +267,7 @@ def parse_args(args):
     parser.add_argument('--domain_id', '-d', type=int, default=0, 
         help='Specify Domain on which to listen [0]-122')
 
-    parser.add_argument('--dds', '-1', type=int,
+    parser.add_argument('--justdds', '-j', type=int,
         help='just call dds draw this many times, no graphing, for testing')
 
     args = parser.parse_args()
