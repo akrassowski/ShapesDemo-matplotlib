@@ -13,11 +13,9 @@
 
 # python imports
 import argparse
-import copy
 import logging
 import math
 import os
-from os import path as os_path
 import sys
 import time
 
@@ -33,40 +31,10 @@ import rti.connextdds as dds
 
 # helper class
 from MPLShape import MPLShape
+from Sample import Sample
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
-
-class SampleInfo:
-    def __init__(self, loaned_info):
-        self.source_guid = loaned_info.source_guid # read-only, not passed into matplotlib
-        self.reception_sequence_number = loaned_info.reception_sequence_number
-        self.valid = loaned_info.valid
-
-    def __repr__(self):
-        return f'{{source_guid: {self.source_guid} reception_seq#: {self.reception_sequence_number} valid: {self.valid}}} '
-
-
-class SampleData:
-    def __init__(self, loaned_data):
-        self.x = loaned_data['x']
-        self.y = loaned_data['y']
-        self.color = loaned_data['color']
-        self.shapesize = loaned_data['shapesize']
-        self.fillKind = None # = loaned_data.get('fillKind'))
-        self.angle = None #loaned_data.get('angle')
-
-    def __repr__(self):
-        return f'{{xy: {self.x},{self.y} color: {self.color} size: {self.shapesize} fill: {self.fillKind} angle: {self.angle}}} '
-
-class Sample:
-    def __init__(self, loaned):
-        self.info = SampleInfo(loaned.info)
-        self.data = SampleData(loaned.data)
-
-    def __repr__(self):
-        return f'{{data: {self.data} info: {self.info}}} '
-
 
 def correctAspect(axes):
     """needed for round circles"""
@@ -110,7 +78,7 @@ def init_dds(domain_id, extended=True):
     participant = dds.DomainParticipant(domain_id) 
     subscriber = dds.Subscriber(participant)
 
-    qos_file = os_path.dirname(os_path.realpath(__file__)) + "/SimpleShapeExample.xml"
+    qos_file = os.path.dirname(os.path.realpath(__file__)) + "/SimpleShapeExample.xml"
     provider = dds.QosProvider(qos_file)
 
     type_name = "ShapeTypeExtended" if extended else "ShapeType"
@@ -131,9 +99,7 @@ def init_dds(domain_id, extended=True):
     
 def main(args):
 
-    global axes, handle_input_count, old_samples, poly_dic
     poly_dic = {}
-    handle_input_count = 0
     old_samples = {'C': [], 'S': [], 'T': []}
 
     fig, axes = create_matplot(args, f"ShapeSubscriber Domain:{args.domain_id} Slot: {args.index}")
@@ -148,7 +114,6 @@ def main(args):
         return guid, (guid, seq)
     
     def _process_sample(sample, which):
-        global axes, poly_dic
         if args.justdds:
             return
 
@@ -179,16 +144,10 @@ def main(args):
             else:
                 poly.set_xy(xy)
 
-        return poly_dic.values()
-
 
     def do_read(reader, which):
         """handle the sample input, return the list of shapes"""
-        global handle_input_count, old_samples
-        handle_input_count += 1
         LOG.debug(f'{which=} {old_samples[which]=} ')
-        ##if handle_input_count > 100: 
-            ##sys.exit(0)
 
         # select any leftover samples then first of new take()
         my_sample = {}
@@ -200,7 +159,6 @@ def main(args):
                 for sample in samples:
                     LOG.debug(f'{first=} {sample=} ')
                     if first:
-                        #my_sample = copy.deepcopy(sample)
                         LOG.debug(f'{sample.info=} {sample.data=}')
                         my_sample = Sample(sample)
                         first = False
