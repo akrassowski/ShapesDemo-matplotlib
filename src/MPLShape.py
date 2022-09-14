@@ -56,8 +56,8 @@ class MPLShape():
             self.size = sample.data.shapesize / 2
             self.color = COLOR_MAP[sample.data.color]
             if args.extended:
-                self.angle = sample.data.angle
-                self.fillKind = sample.data.fillKind
+                self.angle = 0 if sample.data.angle is None else sample.data.angle
+                self.fillKind = 0 if sample.data.fillKind is None else sample.data.fillKind
         LOG.debug(f'created {self=}')
 
 
@@ -77,7 +77,7 @@ class MPLShape():
             return self.xy
 
         x, y = self.xy
-        s2 = self.size / 2
+        s2 = self.size
         if self.which == 'T':
             points = [(x, y+s2), (x+s2, y-s2), (x-s2, y-s2)]
         elif self.which == 'S':
@@ -111,11 +111,11 @@ class MPLShape():
     def create_circle_polygon(self):
         """return a CirclePolygon"""
         LOG.debug(f'{ec=} {EDGE_LINE_WIDTH=}')
-        return CirclePolygon(self.xy, radius=self.size/2)
+        return CirclePolygon(self.xy, radius=self.size)
 
     def create_circle(self):
         """return a circle """
-        return Circle(self.xy, radius=self.size/2)
+        return Circle(self.xy, radius=self.size)
 
     def create_square(self):
         """return a square, avoid Rectangle whose coords are diff from Triangle"""

@@ -54,11 +54,15 @@ def create_matplot(args, name):
     ##fig.suptitle("awaiting data...")
     axes.set_xlim((0, args.graphx))
     axes.set_ylim((0, args.graphy))
+
+    # hide the axis ticks/subticks/labels
     axes.get_xaxis().set_visible(False)
     axes.get_yaxis().set_visible(False)
+
     # remove margin
     plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
 
+    # Compute the Slots when running multiple instances
     # get the x, y, dx, dy
     mngr = plt.get_current_fig_manager()
     x, y, dx, dy = mngr.window.geometry().getRect()
@@ -68,6 +72,12 @@ def create_matplot(args, name):
     x, y = coord[args.index-1]
     LOG.debug(f'{x=}, {y=}')
     mngr.window.setGeometry(x, y, int(dx), int(dy))
+
+    # set a background image
+    image = plt.imread("RTI_Logo_RGB-Color.png")
+    fig.figimage(image, xo=35, yo=120, zorder=3, alpha=0.1)
+    #MARX, MARY = 25, 55
+    #image = axes.imshow(image, extent=[MARX, args.graphx-MARX, MARY, args.graphy-MARY])
 
     return fig, axes
 
@@ -200,7 +210,7 @@ def main(args):
     # Create the animation and show
     else:
         LOG.debug("Calling FuncAnimation which calls read_and_draw")
-        ani = FuncAnimation(fig, read_and_draw, interval=10, blit=False)
+        ani = FuncAnimation(fig, read_and_draw, interval=5, blit=True )
 
         # Show the image and block until the window is closed
         plt.show()
@@ -208,7 +218,7 @@ def main(args):
 
 def parse_args(args):
     """pass args to allow testing"""
-    FIGX, FIGY = 4, 4
+    FIGX, FIGY = 2.375, 2.72 # match RTI ShapesDemo box size
     MAXX, MAXY = 240, 270
     parser = argparse.ArgumentParser(description="Simple ShapesDemo Subscriber")
     parser.add_argument('-f', '--figureXY', default=(FIGX, FIGY), type=int, nargs=2,
@@ -230,7 +240,8 @@ def parse_args(args):
 
     args = parser.parse_args()
 #    args.figxy = args.figureXY[0], args.figureXY[1]
-    args.graphx, args.graphy = args.graphXY[0], args.graphXY[1]
+    #args.graphx, args.graphy = args.graphXY[0], args.graphXY[1]
+    args.graphx, args.graphy = args.graphXY
     LOG.info(f'{args=}')
     return args
     
