@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ###############################################################################
-# (c) Copyright, Real-Time Innovations, 2019. All rights reserved.            #
+# (c) Copyright, Real-Time Innovations, 2021. All rights reserved.            #
 # No duplications, whole or partial, manual or electronic, may be made        #
 # without express written permission.  Any such copies, or revisions thereof, #
 # must display this notice unaltered.                                         #
@@ -13,6 +13,7 @@
 
 # python imports
 import argparse
+from collections import defaultdict
 import logging
 import math
 import os
@@ -30,19 +31,19 @@ from matplotlib.animation import FuncAnimation
 import rti.connextdds as dds
 
 # helper class
-from MPLShape import MPLShape
-from Sample import Sample
+from Shape import Shape
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
-def correctAspect(axes):
-    """needed for round circles"""
-    axes.set_aspect(1.0/axes.get_data_ratio()*1.0)
-    return axes
+#TODO - default collection
+def add_or_update_list(ar, item, ix):
+    if ix < len(ar):
+        ar[ix] = item
+    else:
+        ar.append(item)
 
-
-def create_matplot(args, name):
+def create_matplot(args, box_title):
     """init all the figure attributes - some is Mac-specific, some must be done b4 creating fig"""
     """ taken from https://stackoverflow.com/questions/7449585/how-do-you-set-the-absolute-position-of-figure-windows-with-matplotlib """
 
@@ -50,7 +51,7 @@ def create_matplot(args, name):
     matplotlib.rcParams['toolbar'] = 'None'
 
     # create the Figure - SECOND
-    fig, axes = plt.subplots(figsize=args.figureXY, num=name)
+    fig, axes = plt.subplots(figsize=args.figureXY, num=box_title)
     ##fig.suptitle("awaiting data...")
     axes.set_xlim((0, args.graphx))
     axes.set_ylim((0, args.graphy))
@@ -81,15 +82,13 @@ def create_matplot(args, name):
 
     return fig, axes
 
-def init_dds(domain_id, extended=True):
-    """return reader_dic """
-    LOG.debug(f'init_dds {domain_id=} {extended=}')
-    reader_dic = {}
-    participant = dds.DomainParticipant(domain_id) 
+def init_dds(domain_id, qos_file, qos_lib, qos_profile, extended=True):
+    """return reader_dic and info_dic"""  # TODO add Pubs here
+    LOG.info(f'init_dds {domain_id=} {qos_file} {extended=}')
+    participant = dds.DomainParticipant(domain_id)
     subscriber = dds.Subscriber(participant)
 
-    qos_file = os.path.dirname(os.path.realpath(__file__)) + "/SimpleShapeExample.xml"
-    provider = dds.QosProvider(qos_file)
+    provider = dds.QosProvider(qos_file, "MyQosLibrary::MyProfile")
 
     type_name = "ShapeTypeExtended" if extended else "ShapeType"
     provider_type = provider.type(type_name)
@@ -98,103 +97,135 @@ def init_dds(domain_id, extended=True):
     square_topic = dds.DynamicData.Topic(participant, "Square", provider_type)
     triangle_topic = dds.DynamicData.Topic(participant, "Triangle", provider_type)
 
+    reader_qos = provider.datareader_qos
+    circle_reader = dds.DynamicData.DataReader(subscriber, circle_topic, reader_qos)
+    square_reader = dds.DynamicData.DataReader(subscriber, square_topic, reader_qos)
+    triangle_reader = dds.DynamicData.DataReader(subscriber, triangle_topic, reader_qos)
 
-    # DataReader QoS is configured in USER_QOS_PROFILES.xml
-    reader_dic['C'] = dds.DynamicData.DataReader(subscriber, circle_topic)
-    reader_dic['S'] = dds.DynamicData.DataReader(subscriber, square_topic)
-    reader_dic['T'] = dds.DynamicData.DataReader(subscriber, triangle_topic)
+    reader_dic = {
+        'C': circle_reader,
+        'S': square_reader,
+        'T': triangle_reader,
+    }
+    info_dic = {
+        'C': circle_reader.qos.resource_limits.max_samples_per_instance, 'CI': 0,
+        'S': square_reader.qos.resource_limits.max_samples_per_instance, 'SI': 0,
+        'T': triangle_reader.qos.resource_limits.max_samples_per_instance, 'TI': 0,
+    }
 
-    return reader_dic
+    return reader_dic, info_dic
 
-    
+class InstanceGen:
+    def __init__(self, number):
+        self.number = number
+        self.instance = 0
+
+    def next(self):
+        ret_val = self.instance
+        self.instance = (self.instance + 1) % self.number
+        return ret_val
+
+"""
+   Topic: color-instance: poly
+
+"""
+
+def form_instance_gen_key(topic_letter, color):
+    return f'{topic_letter}-{color}'
+
+def form_poly_key(which, color, instance_num):
+    return f'{which}-{color}-{instance_num}'
+
 def main(args):
 
-    poly_dic = {}
-    old_samples = {'C': [], 'S': [], 'T': []}
+    poly_dic = {} # all polygon instances keyed by Topic+Color+InstanceNum
 
-    fig, axes = create_matplot(args, f"ShapeSubscriber Domain:{args.domain_id} Slot: {args.index}")
+    # keep shape dic for each Topic holding list of instances
+    shapes = {'C': defaultdict(list), 'S': defaultdict(list), 'T': defaultdict(list)}
+    instance_gen_dic = {} # Topic-color: InstanceGen
+
+    title = f"ShapeSubscriber Domain:{args.domain_id} Slot: {args.index}"
+    fig, axes = create_matplot(args, box_title=title)
+
     # fig.suptitle("")
+    cwd = os.path.dirname(os.path.realpath(__file__))
 
-    reader_dic = init_dds(args.domain_id, args.extended)
+    reader_dic, info_dic = init_dds(
+	domain_id=args.domain_id, 
+        qos_file=cwd + args.qos_file[1:] if args.qos_file[0] == '.' else args.qos_file,
+        qos_lib=args.qos_lib, 
+        qos_profile=args.qos_profile,
+        extended=args.extended
+    )
 
-    def _get_sample_id(sample):
-        """given a sample, return the guid and a guid-qualified sample id"""
-        guid = str(sample.info.source_guid)
-        seq = sample.info.reception_sequence_number.value
-        return guid, (guid, seq)
-    
-    def _process_sample(sample, which):
+    def process_shape(which, shape, ix):
+        """update the poly_dic with fresh shape info"""
         if args.justdds:
+            LOG.info("early exit from _process_sample")
             return
 
-        if sample:
-            d = sample.data
-            LOG.debug(f'SAMPLE: {d.color=} {d.x=}')
-            guid, sample_id = _get_sample_id(sample)
-            mpl_shape = MPLShape(args, which, sample)
-            poly = poly_dic.get(guid)
-            if not poly:
-                if args.justdds:
-                    poly = None
-                else:
-                    poly = mpl_shape.create_poly()
-                poly_dic[guid] = poly
-                LOG.info(f'added {guid=}, {mpl_shape.color=}')
-                if not args.justdds:
-                    axes.add_patch(poly)
-
-            LOG.debug(f'got {sample_id=} \n{poly_dic.values()=}')
-            xy = mpl_shape.get_points()
-            if which == 'CP':
-                poly.center = xy
-                # no such attribute poly.set_xy(xy)
-                # no such property center poly.set(center=xy)
-            elif which == 'C':
-                poly.set(center=xy)
-            else:
-                poly.set_xy(xy)
-
-
-    def do_read(reader, which):
-        """handle the sample input, return the list of shapes"""
-        LOG.debug(f'{which=} {old_samples[which]=} ')
-
-        # select any leftover samples then first of new take()
-        my_sample = {}
-        if len(old_samples[which]) > 0:
-            my_sample = old_samples[which].pop()
+        LOG.debug(f"SHAPE: {shape=}")
+        poly_key = form_poly_key(which, shape.scolor, ix)
+        poly = poly_dic.get(poly_key)
+        if not poly:
+            poly = shape.create_poly()
+            poly_dic[poly_key] = poly
+            LOG.info(f"added {poly_key=}, {shape.scolor}")
+            if not args.justdds:
+                axes.add_patch(poly)
         else:
-            with reader.read_valid() as samples:
-                first = True
-                for sample in samples:
-                    LOG.debug(f'{first=} {sample=} ')
-                    if first:
-                        LOG.debug(f'{sample.info=} {sample.data=}')
-                        my_sample = Sample(sample)
-                        first = False
-                    else:
-                        old_samples[which].append(Sample(sample))
-                        LOG.debug(f'ADDED {old_samples=}')
-        LOG.debug(f'{my_sample=}')
-        """if my_sample:
-            d = my_sample.data
-            LOG.info(f'SAMPLE {d.x=} {d.y=} {d.color=}')"""
+            shape.add_edge()
 
-        _process_sample(my_sample, which)
- 
+        #LOG.debug(f'got {sample_id=} \n{poly_dic.values()=}')
+        xy = shape.get_points()
+        if which == 'CP':
+            poly.center = xy
+            # no such attribute poly.set_xy(xy)
+            # no such property center poly.set(center=xy)
+        elif which == 'C':
+            poly.set(center=xy)
+        else:
+            poly.set_xy(xy)
 
-    def read_and_draw(_frame):
+    def get_sample(reader, which):
+        """get samples and create shapes"""
+        """take all valid samples -
+           create a shape (with edge) from the sample data, add to shape list
+           remove the prior shape's edge
+           process shapes into polygons """
+
+        with reader.take_valid() as samples:
+            for sample in samples:
+
+                shape = Shape(args=args, which=which, data=sample.data, info=sample.info)
+                instance_gen_key = form_instance_gen_key(which, shape.scolor)  # use API to get Key
+                inst = instance_gen_dic.get(instance_gen_key)
+                if not inst:
+                    inst = InstanceGen(info_dic[which])
+                    instance_gen_dic[instance_gen_key] = inst
+                ix = inst.next()
+                add_or_update_list(shapes[which][shape.scolor], shape, ix)
+                LOG.info(f"{shape=}")
+                LOG.info(f"{shapes=}")
+                process_shape(which, shape, ix)
+                prev_shape = shapes[which][shape.scolor][ix-1]
+                if prev_shape:
+                    prev_shape.remove_edge()
+
+        if args.nap:
+            time.sleep(args.nap)
+            LOG.info(f'Sleeping {args.nap=}')
+
+
+    def fetch_and_draw(_frame):
         """The animation function, called periodically in a set interval, reads the
         last image received and draws it"""
-        #####if _frame > 3: sys.exit(0)
-        # The Qos configuration guarantees we will only have the last sample;
-        # we read (not take) so we can access it again in the next interval if
-        # we don't receive a new one
+        ###if _frame > 500: sys.exit(0)
         readers = reader_dic.values()
         whiches = reader_dic.keys()
         for reader, which in zip(readers, whiches):
             #LOG.info(f'FOR READERS {which=} {len(readers)=}')
-            do_read(reader, which)
+            get_sample(reader, which)
 
         return poly_dic.values()  # give back the updated values so they are rendered
 
@@ -202,15 +233,15 @@ def main(args):
     if args.justdds:
         LOG.info(f'RUNNING {args.justdds=} reads')
         for i in range(args.justdds):
-            read_and_draw(10)
-            LOG.info(f'{i=} of {args.justdds=}')
-            time.sleep(0.001)
+            fetch_and_draw(10)
+            LOG.info(f'{i} of {args.justdds}')
         sys.exit(0)
 
     # Create the animation and show
     else:
-        LOG.debug("Calling FuncAnimation which calls read_and_draw")
-        ani = FuncAnimation(fig, read_and_draw, interval=5, blit=True )
+        # lower interval if updates are jerky
+        #ani = FuncAnimation(fig, fetch_and_draw, interval=10, blit=True )
+        ani = FuncAnimation(fig, fetch_and_draw, interval=20, blit=True )
 
         # Show the image and block until the window is closed
         plt.show()
@@ -220,31 +251,42 @@ def parse_args(args):
     """pass args to allow testing"""
     FIGX, FIGY = 2.375, 2.72 # match RTI ShapesDemo box size
     MAXX, MAXY = 240, 270
+    DEFAULT_QOS_FILE = './SimpleShape.xml'
+    DEFAULT_QOS_LIB, DEFAULT_QOS_PROFILE = 'MyQoSLib', 'MyQoSProfile'
+    DEFAULT_HISTORY = 6
+
     parser = argparse.ArgumentParser(description="Simple ShapesDemo Subscriber")
+    parser.add_argument('--domain_id', '-d', type=int, default=0,
+        help='Specify Domain on which to listen [0]-122')
+    parser.add_argument('--extended', action=argparse.BooleanOptionalAction,
+        help='Use ShapeTypeExtended [ShapeType]')
     parser.add_argument('-f', '--figureXY', default=(FIGX, FIGY), type=int, nargs=2,
         help=f'x,y of figure in inches [{FIGX},{FIGY}]')
     parser.add_argument('-g', '--graphXY', default=(MAXX, MAXY), type=int, nargs=2,
         help=f'width and height of graph in pixels [{MAXX},{MAXY}]')
-    parser.add_argument('-l', '--level', type=int, help="logger level [4=INFO]")
     parser.add_argument('-i', '--index', type=int, default=1,
-        help=f'slot index [1]-6')
-
-    parser.add_argument('--extended', action=argparse.BooleanOptionalAction, 
-        help='Use ShapeTypeExtended [ShapeType]')
-
-    parser.add_argument('--domain_id', '-d', type=int, default=0, 
-        help='Specify Domain on which to listen [0]-122')
-
+        help=f'screen slot index [1]-6')
     parser.add_argument('--justdds', '-j', type=int,
         help='just call dds draw this many times, no graphing, for testing')
+    parser.add_argument('-l', '--level', type=int,
+        help="logger level [4=INFO]")
+    parser.add_argument('--nap', '-n', type=float, default=0,
+        help=f'intrasample naptime [default:0.0]')
+    parser.add_argument('--qos_file', '-qf', type=str, default=DEFAULT_QOS_FILE,
+        help=f'full path of QoS file [{DEFAULT_QOS_FILE}]')
+    parser.add_argument('--qos_lib', '-ql', type=str, default=DEFAULT_QOS_LIB,
+        help=f'QoS library name [{DEFAULT_QOS_LIB}]')
+    parser.add_argument('--qos_profile', '-qp', type=str, default=DEFAULT_QOS_PROFILE,
+        help=f'QoS profile name [{DEFAULT_QOS_PROFILE}]')
+    parser.add_argument('--square-history-depth', '-shd', type=int,
+        help=f'history depth for square topic [{DEFAULT_HISTORY}]')
+
 
     args = parser.parse_args()
-#    args.figxy = args.figureXY[0], args.figureXY[1]
-    #args.graphx, args.graphy = args.graphXY[0], args.graphXY[1]
     args.graphx, args.graphy = args.graphXY
     LOG.info(f'{args=}')
     return args
-    
+
 
 if __name__ == "__main__":
     logging.basicConfig(
