@@ -13,7 +13,8 @@
 
 # python imports
 import argparse
-from collections import defaultdict
+#from collections import defaultdict
+import copy
 import logging
 import math
 import os
@@ -21,6 +22,7 @@ import sys
 import time
 
 # animation imports
+###import PySide2 # for PDB operation
 import matplotlib
 if os.name != 'nt':
     matplotlib.use('Qt5Agg')
@@ -35,13 +37,6 @@ from Shape import Shape
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
-
-#TODO - default collection
-def add_or_update_list(ar, item, ix):
-    if ix < len(ar):
-        ar[ix] = item
-    else:
-        ar.append(item)
 
 def create_matplot(args, box_title):
     """init all the figure attributes - some is Mac-specific, some must be done b4 creating fig"""
@@ -116,19 +111,20 @@ def init_dds(domain_id, qos_file, qos_lib, qos_profile, extended=True):
     return reader_dic, info_dic
 
 class InstanceGen:
+    """returns instance number confined to the range"""
     def __init__(self, number):
         self.number = number
+        self.at = 0
         self.instance = 0
 
+    def at(self):
+        """return the last given number"""
+        return self.at
+
     def next(self):
-        ret_val = self.instance
+        self.at = self.instance
         self.instance = (self.instance + 1) % self.number
-        return ret_val
-
-"""
-   Topic: color-instance: poly
-
-"""
+        return self.at
 
 def form_instance_gen_key(topic_letter, color):
     return f'{topic_letter}-{color}'
@@ -139,9 +135,11 @@ def form_poly_key(which, color, instance_num):
 def main(args):
 
     poly_dic = {} # all polygon instances keyed by Topic+Color+InstanceNum
+    #poly_list = []
 
     # keep shape dic for each Topic holding list of instances
-    shapes = {'C': defaultdict(list), 'S': defaultdict(list), 'T': defaultdict(list)}
+    #shapes = {'C': defaultdict(list), 'S': defaultdict(list), 'T': defaultdict(list)}
+    shapes = {'C': {}, 'S': {}, 'T': {}}
     instance_gen_dic = {} # Topic-color: InstanceGen
 
     title = f"ShapeSubscriber Domain:{args.domain_id} Slot: {args.index}"
@@ -164,11 +162,12 @@ def main(args):
             LOG.info("early exit from _process_sample")
             return
 
-        LOG.debug(f"SHAPE: {shape=}")
+        LOG.info(f"SHAPE: {shape=}, {ix=}")
         poly_key = form_poly_key(which, shape.scolor, ix)
         poly = poly_dic.get(poly_key)
         if not poly:
             poly = shape.create_poly()
+            #LOG.info(f'{shape.poly.get_ec()=}')
             poly_dic[poly_key] = poly
             LOG.info(f"added {poly_key=}, {shape.scolor}")
             if not args.justdds:
@@ -176,7 +175,6 @@ def main(args):
         else:
             shape.add_edge()
 
-        #LOG.debug(f'got {sample_id=} \n{poly_dic.values()=}')
         xy = shape.get_points()
         if which == 'CP':
             poly.center = xy
@@ -186,6 +184,7 @@ def main(args):
             poly.set(center=xy)
         else:
             poly.set_xy(xy)
+        poly.set(zorder=shape.zorder)
 
     def get_sample(reader, which):
         """get samples and create shapes"""
@@ -204,11 +203,14 @@ def main(args):
                     inst = InstanceGen(info_dic[which])
                     instance_gen_dic[instance_gen_key] = inst
                 ix = inst.next()
-                add_or_update_list(shapes[which][shape.scolor], shape, ix)
-                LOG.info(f"{shape=}")
-                LOG.info(f"{shapes=}")
+                if not shapes[which].get(shape.scolor):
+                    LOG.info(f'NEW COLOR {shape.scolor} {info_dic[which]}')
+                    shapes[which][shape.scolor] = [None] * info_dic[which]
+                #shapes[which][shape.scolor][ix] = copy.deepcopy(shape)
+                shapes[which][shape.scolor][ix] = shape
                 process_shape(which, shape, ix)
                 prev_shape = shapes[which][shape.scolor][ix-1]
+                LOG.info(f'{prev_shape=} {ix=}')
                 if prev_shape:
                     prev_shape.remove_edge()
 
@@ -228,6 +230,7 @@ def main(args):
             get_sample(reader, which)
 
         return poly_dic.values()  # give back the updated values so they are rendered
+        #return poly_list  # give back the updated values so they are rendered
 
 
     if args.justdds:
