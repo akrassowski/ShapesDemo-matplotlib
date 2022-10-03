@@ -34,7 +34,7 @@
 
         <resource_limits>
           <max_samples>-1</max_samples>
-          <max_samples_per_instance>36</max_samples_per_instance>
+          <max_samples_per_instance>6</max_samples_per_instance>
           <max_instances>-1</max_instances>
         </resource_limits>
       </datareader_qos>
