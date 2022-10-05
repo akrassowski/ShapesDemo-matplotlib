@@ -8,7 +8,7 @@
 # This code contains trade secrets of Real-Time Innovations, Inc.             #
 ###############################################################################
 
-"""Reads Shapes and displays them"""
+"""Subscribes or Publishes Shapes and displays them"""
 
 
 # python imports
@@ -16,7 +16,6 @@ import argparse
 import logging
 import os
 import sys
-import time
 
 # animation imports
 import matplotlib
@@ -28,14 +27,12 @@ from matplotlib.animation import FuncAnimation
 
 # Connext imports
 import rti.connextdds as dds
-
-# helper class
-from Shape import Shape
+from ConnextPub import ConnextPub
+from ConnextSub import ConnextSub
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
-WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
 DEFAULT_TITLE = "Shapes"
 
 
@@ -48,7 +45,6 @@ def create_matplot(args, box_title):
 
     # create the Figure - SECOND
     fig, axes = plt.subplots(figsize=args.figureXY, num=box_title)
-    ##fig.suptitle("awaiting data...")
     axes.set_xlim((0, args.graphx))
     axes.set_ylim((0, args.graphy))
 
@@ -78,176 +74,6 @@ def create_matplot(args, box_title):
     return fig, axes
 
 
-def _init_dds(args):
-    participant = dds.DomainParticipant(args.domain_id)
-    qos_provider = get_qos_provider(
-        args.qos_file, args.qos_lib, args.qos_profile)
-
-    type_name = "ShapeTypeExtended" if args.extended else "ShapeType"
-    provider_type = qos_provider.type(type_name)
-    topic_dic = {
-        'C': dds.DynamicData.Topic(participant, "Circle", provider_type),
-        'S': dds.DynamicData.Topic(participant, "Square", provider_type),
-        'T': dds.DynamicData.Topic(participant, "Triangle", provider_type)
-    }
-    return participant, qos_provider, topic_dic
-
-
-def get_max_samples_per_instance(reader):
-    """ helper to fetch depth from a reader"""
-    return reader.qos.resource_limits.max_samples_per_instance
-
-
-def init_dds_pub(args):
-    participant, qos_provider, topic_dic = _init_dds(args)
-    # TODO more here
-    writer_dic = {
-    }
-    return writer_dic
-
-
-def init_dds_sub(args):
-    """return reader_dic"""
-    participant, qos_provider, topic_dic = _init_dds(args)
-    subscriber = dds.Subscriber(participant)
-    reader_qos = qos_provider.datareader_qos
-    reader_dic = {}
-    for which in args.subscribe:
-        LOG.info(f'Subscribing to {which} {topic_dic[which]=}')
-        reader_dic[which] = dds.DynamicData.DataReader(
-            subscriber, topic_dic[which], reader_qos)
-
-    return reader_dic
-
-
-class InstanceGen:
-    """returns instance index confined to the range"""
-
-    def __init__(self, _range):
-        self._range = _range
-        self.at = 0
-        self.instance = 0
-
-    def get_prev_ix(self):
-        """return the previous given number with no changes"""
-        return (self.at - 1 + self._range) % self._range
-
-    def next(self):
-        """return the next instance index and move along"""
-        self.at = self.instance
-        self.instance = (self.instance + 1) % self._range
-        return self.at
-
-
-def form_poly_key(which, color, instance_num):
-    return f'{which}-{color}-{instance_num}'
-
-
-def get_qos_provider(qos_file, qos_lib, qos_profile):
-    """fetch the qos_profile from the lib in the file"""
-    cwd = os.path.dirname(os.path.realpath(__file__))
-    #  prepend with cwd if starts with dot
-    qos_file = cwd + qos_file[1:] if qos_file[0] == '.' else qos_file
-    return dds.QosProvider(qos_file, f'{qos_lib}::{qos_profile}')
-
-
-global sample_count
-sample_count = 0
-
-
-def start_subscriber(args, fig, axes):
-    """First, some globals and helpers"""
-    poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum
-    instance_gen_dic = {}  # Topic-color: InstanceGen
-    reader_dic = init_dds_sub(args)
-
-    def handle_one_sample(which, sample):
-        """update the poly_dic with fresh shape info"""
-        """create/update a matplotlib polygon from the sample data, add to poly_dic
-           remove the prior poly's edge"""
-        global sample_count
-        sample_count += 1
-        shape = Shape(args=args, which=which,
-                      data=sample.data, info=sample.info)
-        instance_gen_key = f'{which}-{shape.scolor}'  # TODO use API to get Key
-        inst = instance_gen_dic.get(instance_gen_key)
-        if not inst:
-            inst = InstanceGen(get_max_samples_per_instance(reader_dic[which]))
-            instance_gen_dic[instance_gen_key] = inst
-        ix = inst.next()
-        LOG.debug(f"SHAPE: {shape=}, {ix=}")
-        poly_key = form_poly_key(which, shape.scolor, ix)
-        poly = poly_dic.get(poly_key)
-        if args.justdds:
-            LOG.info("early exit")
-            return
-        if not poly:
-            poly = shape.create_poly()
-            poly_dic[poly_key] = poly
-            LOG.info(f"added {poly_key=}")
-            axes.add_patch(poly)
-
-        xy = shape.get_points()
-        if which == 'CP':
-            poly.center = xy
-            # no such attribute poly.set_xy(xy)
-            # no such property center poly.set(center=xy)
-        elif which == 'C':
-            poly.set(center=xy)
-        else:
-            poly.set_xy(xy)
-        poly.set(lw=WIDE_EDGE_LINE_WIDTH, zorder=shape.zorder)
-
-        prev_poly_key = form_poly_key(which, shape.scolor, inst.get_prev_ix())
-        prev_poly = poly_dic.get(prev_poly_key)
-        if prev_poly:
-            prev_poly.set(lw=THIN_EDGE_LINE_WIDTH)
-
-    def handle_samples(reader, which):
-        """get samples and handle each"""
-
-        LOG.debug(f'START {sample_count=}')
-        with reader.take_valid() as samples:
-            for sample in samples:
-                handle_one_sample(which, sample)
-
-        if args.nap:
-            time.sleep(args.nap)
-            LOG.info(f'Sleeping {args.nap=}')
-
-        LOG.info(f'{sample_count=}')
-
-    def fetch_and_draw(_frame):
-        """The animation function, called periodically in a set interval, reads the
-        last image received and draws it"""
-        readers = reader_dic.values()
-        whiches = reader_dic.keys()
-        for reader, which in zip(readers, whiches):
-            handle_samples(reader, which)
-
-        return poly_dic.values()  # give back the updated values so they are rendered
-
-    if args.justdds:  # just for debugging
-        LOG.info(f'RUNNING {args.justdds=} reads')
-        for i in range(args.justdds):
-            fetch_and_draw(10)
-            LOG.info(f'{i} of {args.justdds}')
-        sys.exit(0)
-
-    # Create the animation and show
-    else:
-        # lower interval if updates are jerky
-        LOG.info('start animation')
-        ani = FuncAnimation(fig, fetch_and_draw, interval=20, blit=True)
-        # Show the image and block until the window is closed
-        plt.show()
-
-
-def start_publisher(args, fig, axes):
-    print("Publishing is TBD")
-    sys.exit(0)
-
-
 def main(args):
 
     if args.title == DEFAULT_TITLE:
@@ -259,14 +85,30 @@ def main(args):
     if args.subtitle:
         fig.suptitle(args.subtitle)
 
+    connext_obj = None
     if args.subscribe:
-        start_subscriber(args, fig, axes)
+        connext_obj = ConnextSub(args)
     elif args.publish:
-        start_publisher(args, fig, axes)
+        connext_obj = ConnextPub(args)
     else:
         print("Must run as either publisher or subscriber")
         sys.exit(-1)
 
+    if args.justdds:
+        LOG.info(f'RUNNING {args.justdds=} reads')
+        for i in range(args.justdds):
+            fetch_and_draw(10)
+            LOG.info(f'{i} of {args.justdds}')
+        sys.exit(0)
+
+    # Create the animation and show
+    else:
+        # lower interval if updates are jerky
+        connext_obj.start(fig, axes)
+        ani = FuncAnimation(fig, connext_obj.fetch_and_draw, interval=20, blit=True )
+
+        # Show the image and block until the window is closed
+        plt.show()
     LOG.info("Exiting...")
 
 
