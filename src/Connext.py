@@ -16,6 +16,7 @@ import logging
 import os
 import sys
 import time
+from collections import Counter
 
 # Connext imports
 import rti.connextdds as dds
@@ -26,7 +27,6 @@ LOG.setLevel(logging.INFO)
 
 class Connext:
     WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
-
 
     def __init__(self, args):
         self.args = args
@@ -41,6 +41,7 @@ class Connext:
             'S': dds.DynamicData.Topic(self.participant, "Square", provider_type),
             'T': dds.DynamicData.Topic(self.participant, "Triangle", provider_type)
         }
+        self.sample_counter = Counter()
 
     @staticmethod
     def form_poly_key(which, color, instance_num):

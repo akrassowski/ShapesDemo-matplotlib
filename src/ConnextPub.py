@@ -25,7 +25,6 @@ from Shape import Shape
 from InstanceGen import InstanceGen
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.INFO)
 
 
 class ConnextPub(Connext):

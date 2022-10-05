@@ -8,7 +8,7 @@
 # This code contains trade secrets of Real-Time Innovations, Inc.             #
 ###############################################################################
 
-"""Reads Shapes and displays them"""
+"""Subscribes to Shapes and updates them in matplotlib"""
 
 
 # python imports
@@ -16,7 +16,6 @@ import logging
 import os
 import sys
 import time
-from collections import Counter
 
 # Connext imports
 import rti.connextdds as dds
@@ -26,9 +25,6 @@ from Shape import Shape
 from InstanceGen import InstanceGen
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.INFO)
-
-###WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
 
 
 class ConnextSub(Connext):
@@ -38,9 +34,8 @@ class ConnextSub(Connext):
         self.subscriber = dds.Subscriber(self.participant)
         reader_qos = self.qos_provider.datareader_qos
         self.reader_dic = {}
-        self.sample_count = Counter()
         for which in args.subscribe:
-            LOG.info(f'Subscribing to {which} {self.topic_dic[which]=}')
+            LOG.debug(f'Subscribing to {which}')
             self.reader_dic[which] = dds.DynamicData.DataReader(
                 self.subscriber, self.topic_dic[which], reader_qos)
 
@@ -59,10 +54,11 @@ class ConnextSub(Connext):
         """update the poly_dic with fresh shape info"""
         """create/update a matplotlib polygon from the sample data, add to poly_dic
            remove the prior poly's edge"""
-        self.sample_count.update(which)
+        self.sample_counter.update(f'{which}r')
         shape = Shape(args=self.args, which=which,
                       data=sample.data, info=sample.info)
         instance_gen_key = f'{which}-{shape.scolor}'  # TODO use API to get Key
+        ###LOG.info(f'{sample=} {sample.get_key_value()=}')
         inst = self.instance_gen_dic.get(instance_gen_key)
         if not inst:
             inst = InstanceGen(self.get_max_samples_per_instance(which))
@@ -77,14 +73,12 @@ class ConnextSub(Connext):
         if not poly:
             poly = shape.create_poly()
             self.poly_dic[poly_key] = poly
-            LOG.info(f"added {poly_key=}")
+            LOG.debug(f"added {poly_key=}")
             self.axes.add_patch(poly)
 
         xy = shape.get_points()
         if which == 'CP':
-            poly.center = xy
-            # no such attribute poly.set_xy(xy)
-            # no such property center poly.set(center=xy)
+            poly.center = xy  ## no attr poly.set_xy(xy) nor property poly.set(center=xy)
         elif which == 'C':
             poly.set(center=xy)
         else:
@@ -99,7 +93,7 @@ class ConnextSub(Connext):
     def handle_samples(self, reader, which):
         """get samples and handle each"""
 
-        LOG.info(f'START {self.sample_count=}')
+        LOG.debug(f'START {self.sample_counter=}')
         with reader.take_valid() as samples:
             for sample in samples:
                 self.handle_one_sample(which, sample)
@@ -108,7 +102,7 @@ class ConnextSub(Connext):
             time.sleep(self.args.nap)
             LOG.info(f'Sleeping {self.args.nap=}')
 
-        LOG.debug(f'{self.sample_count=}')
+        LOG.debug(f'{self.sample_counter=}')
 
     def fetch_and_draw(self, ignoreMe):
         """The animation function, called periodically in a set interval, reads the

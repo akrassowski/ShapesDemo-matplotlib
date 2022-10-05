@@ -45,16 +45,17 @@ class Shape():
         self.seq = info.reception_sequence_number.value
         self.zorder = ZORDER_INC
 
-        self.xy = (data['x'], args.graphy - data['y'])
+        self.xy = data['x'], args.graphy - data['y']
         self.size = data['shapesize'] / 2
-        self.scolor = data['color']  # keep sample color for debugging
+        self.scolor = data['color']  # keep readable color name
         self.color = COLOR_MAP[self.scolor]
-        if args.extended:
-            self.angle = data['angle']
-            self.fillKind = data['fillKind']
-        else:
-            self.angle = 0
-            self.fillKind = 0
+        self.angle = data['angle'] if args.extended else 0
+        self.fillKind = int(data['fillKind']) if args.extended else 0
+        self.poly_create_func = {
+            'C': self.create_circle,
+            'S': self.create_square,
+            'T': self.create_triangle
+        }
         LOG.debug(f'created {self=}')
 
     def get_sequence_number(self):
@@ -103,10 +104,6 @@ class Shape():
         LOG.debug(f'{self=} {ec=} {fc=}')
         return fc, ec
 
-    def create_circle_polygon(self):
-        """return a CirclePolygon"""
-        return CirclePolygon(self.xy, radius=self.size)
-
     def create_circle(self):
         """return a circle """
         return Circle(self.xy, radius=self.size)
@@ -119,20 +116,9 @@ class Shape():
         """return a triangle from the Polygon"""
         return Polygon(self.get_points(), 3)
 
-    def create_poly(self):  # TODO:opt use funcmap from which
-        """create a matplot shape from a MPL shape"""
-        if self.which == 'T':
-            poly = self.create_triangle()
-        elif self.which == 'S':
-            LOG.debug(f'SQUARE {self=}')
-            poly = self.create_square()
-        elif self.which == 'C':
-            poly = self.create_circle()
-        elif self.which == 'CP':
-            poly = self.create_circle_polygon()
-        else:
-            LOG.error(f"unknown shape type {self=}")
-            return None
+    def create_poly(self):
+        """create a matplot polygon"""
+        poly = self.poly_create_func[self.which]()
         fc, ec = self.get_face_and_edge_color()
         poly.set(ec=ec, fc=fc,
                  hatch=HATCH_MAP[self.fillKind], zorder=self.zorder)
