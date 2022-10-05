@@ -8,16 +8,24 @@ else
     DOMAIN=$1
 fi
 
-for N in 2 3 ; do
-    CMD="./subAPI.py --domain_id ${DOMAIN} --index $N --no-extended"
-    echo $CMD
-    $CMD &
-done
+EXE=./PubSubApp.py
+COMMON="--domain_id $DOMAIN"
+TOP_ROW="--subtitle Legacy --no-extended"
+BOTTOM_ROW="--subtitle Extended --extended"
+LEFT="--subscribe S"
+RIGHT="--subscribe CST"
 
-for N in 5 6; do
-    CMD="./subAPI.py --domain_id ${DOMAIN} --index $N --extended"
-    echo $CMD
-    $CMD &
-done
+FLAGS=(--title "Square Domain:${DOMAIN}" ${COMMON} ${TOP_ROW} ${LEFT} --index 2 )
+${EXE} "${FLAGS[@]}" &
+
+FLAGS=(--title "All Domain:${DOMAIN}" ${COMMON} ${TOP_ROW} ${RIGHT} --index 3 )
+${EXE} "${FLAGS[@]}" &
+
+FLAGS=(--title "Square Domain:${DOMAIN}" ${COMMON} ${BOTTOM_ROW} ${LEFT} --index 5 )
+${EXE} "${FLAGS[@]}" &
+
+FLAGS=(--title "All Domain:${DOMAIN}" ${COMMON} ${BOTTOM_ROW} ${RIGHT} --index 6 )
+${EXE} "${FLAGS[@]}" &
+
 
 echo "Use pkill Python to kill all Python subscribers (and all other Python!)"
