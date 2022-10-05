@@ -80,7 +80,8 @@ def create_matplot(args, box_title):
 
 def _init_dds(args):
     participant = dds.DomainParticipant(args.domain_id)
-    qos_provider = get_qos_provider(args.qos_file, args.qos_lib, args.qos_profile)
+    qos_provider = get_qos_provider(
+        args.qos_file, args.qos_lib, args.qos_profile)
 
     type_name = "ShapeTypeExtended" if args.extended else "ShapeType"
     provider_type = qos_provider.type(type_name)
@@ -91,16 +92,19 @@ def _init_dds(args):
     }
     return participant, qos_provider, topic_dic
 
+
 def get_max_samples_per_instance(reader):
     """ helper to fetch depth from a reader"""
     return reader.qos.resource_limits.max_samples_per_instance
 
+
 def init_dds_pub(args):
     participant, qos_provider, topic_dic = _init_dds(args)
-    #TODO more here
+    # TODO more here
     writer_dic = {
     }
     return writer_dic
+
 
 def init_dds_sub(args):
     """return reader_dic"""
@@ -110,8 +114,9 @@ def init_dds_sub(args):
     reader_dic = {}
     for which in args.subscribe:
         LOG.info(f'Subscribing to {which} {topic_dic[which]=}')
-        reader_dic[which] = dds.DynamicData.DataReader(subscriber, topic_dic[which], reader_qos)
- 
+        reader_dic[which] = dds.DynamicData.DataReader(
+            subscriber, topic_dic[which], reader_qos)
+
     return reader_dic
 
 
@@ -137,6 +142,7 @@ class InstanceGen:
 def form_poly_key(which, color, instance_num):
     return f'{which}-{color}-{instance_num}'
 
+
 def get_qos_provider(qos_file, qos_lib, qos_profile):
     """fetch the qos_profile from the lib in the file"""
     cwd = os.path.dirname(os.path.realpath(__file__))
@@ -144,8 +150,11 @@ def get_qos_provider(qos_file, qos_lib, qos_profile):
     qos_file = cwd + qos_file[1:] if qos_file[0] == '.' else qos_file
     return dds.QosProvider(qos_file, f'{qos_lib}::{qos_profile}')
 
+
 global sample_count
 sample_count = 0
+
+
 def start_subscriber(args, fig, axes):
     """First, some globals and helpers"""
     poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum
@@ -205,7 +214,7 @@ def start_subscriber(args, fig, axes):
         if args.nap:
             time.sleep(args.nap)
             LOG.info(f'Sleeping {args.nap=}')
-        
+
         LOG.info(f'{sample_count=}')
 
     def fetch_and_draw(_frame):
@@ -217,7 +226,6 @@ def start_subscriber(args, fig, axes):
             handle_samples(reader, which)
 
         return poly_dic.values()  # give back the updated values so they are rendered
-
 
     if args.justdds:  # just for debugging
         LOG.info(f'RUNNING {args.justdds=} reads')
@@ -234,9 +242,11 @@ def start_subscriber(args, fig, axes):
         # Show the image and block until the window is closed
         plt.show()
 
+
 def start_publisher(args, fig, axes):
     print("Publishing is TBD")
     sys.exit(0)
+
 
 def main(args):
 
@@ -273,7 +283,7 @@ def parse_args(args):
             raise ValueError('Cannot subscribe to more then 3 Topics')
         for letter in letters:
             if letter.upper() not in "CST":
-                raise ValueError('Topic letters ({letter}) must be one or more of: ' + 
+                raise ValueError('Topic letters ({letter}) must be one or more of: ' +
                                  '"CST" for Circle, Square, Triangle')
         return letters.upper()
 
@@ -309,8 +319,8 @@ def parse_args(args):
 
     parser.add_argument('--publish', '-pub', type=validate_shape_letters,
                         help=f'simple publisher of any of Circle, Square, Triangle [S]')
-    
-    ## internal args used whilst developing/debugging only
+
+    # internal args used whilst developing/debugging only
     parser.add_argument('--justdds', '-j', type=int,
                         help='just call dds draw this many times, no graphing, for testing')
     parser.add_argument('--nap', '-n', type=float, default=0,
