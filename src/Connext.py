@@ -12,12 +12,12 @@
 
 
 # python imports
+from abc import ABC, abstractmethod
 import logging
 import os
 import sys
 import time
 from collections import Counter
-
 # Connext imports
 import rti.connextdds as dds
 
@@ -25,7 +25,7 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
 
-class Connext:
+class Connext(ABC):
     WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
 
     def __init__(self, args):
@@ -47,11 +47,18 @@ class Connext:
     def form_poly_key(which, color, instance_num):
         return f'{which}-{color}-{instance_num}'
 
+    @staticmethod
+    def get_cwd(file):
+        return os.path.dirname(os.path.realpath(file))
+
     def get_qos_provider(self):
         """fetch the qos_profile from the lib in the file"""
-        cwd = os.path.dirname(os.path.realpath(__file__))
+        cwd = self.get_cwd(__file__)
         qos_file = self.args.qos_file
         #  prepend with cwd if starts with dot
         qos_file = cwd + qos_file[1:] if qos_file[0] == '.' else qos_file
         return dds.QosProvider(qos_file, f'{self.args.qos_lib}::{self.args.qos_profile}')
 
+    @abstractmethod
+    def fetch_and_draw(self):
+        pass

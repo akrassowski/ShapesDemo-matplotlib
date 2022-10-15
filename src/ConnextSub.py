@@ -36,8 +36,12 @@ class ConnextSub(Connext):
         self.reader_dic = {}
         for which in args.subscribe:
             LOG.debug(f'Subscribing to {which}')
-            self.reader_dic[which] = dds.DynamicData.DataReader(
-                self.subscriber, self.topic_dic[which], reader_qos)
+            if 1==1:
+                self.reader_dic[which] = dds.DynamicData.DataReader(
+                    self.subscriber, self.topic_dic[which], reader_qos)
+            else:
+                self.reader_dic[which] = dds.DataReader(
+                    self.participant.implicit_subscriber, self.topic_dic[which])
 
     def get_max_samples_per_instance(self, which):
         """ helper to fetch depth from a reader"""

@@ -35,6 +35,10 @@ def parse_args(args, default_title):
 
     parser = argparse.ArgumentParser(
         description="Simple ShapesDemo")
+    parser.add_argument('--config', '-cfg', type=str,
+                        help=f'filename of JSON cfg file [None]')
+    parser.add_argument('--config_help', '-ch', action='store_true',
+                        help=f'print pub and sub config dictionaries and exit')
     parser.add_argument('--domain_id', '-d', type=int, default=0,
                         help='Specify Domain on which to listen [0]-122')
     parser.add_argument('--extended', action=argparse.BooleanOptionalAction,

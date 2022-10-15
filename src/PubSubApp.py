@@ -13,17 +13,24 @@
 # python imports
 import logging
 import os
+from pprint import pprint
 import sys
 
+try:
 # animation imports
-import matplotlib
+    import matplotlib
 # TODO - use Qt5 if not on PC
-if os.name != 'nt':
-    matplotlib.use('Qt5Agg')  # must precede pyplot
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+    if os.name != 'nt':
+        matplotlib.use('Qt5Agg')  # must precede pyplot
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+except:
+    print("No matplotlib")
+
 
 # Connext imports
+from ConfigParser import ConfigParser
+from Connext import Connext
 from ConnextPub import ConnextPub
 from ConnextSub import ConnextSub
 
@@ -34,9 +41,11 @@ LOG = logging.getLogger(__name__)
 DEFAULT_TITLE = "Shapes"
 
 
-def create_matplot(args, box_title):
+def create_matplot(args):
     """init all the figure attributes - some is Mac-specific, some must be done b4 creating fig"""
     """ taken from https://stackoverflow.com/questions/7449585/how-do-you-set-the-absolute-position-of-figure-windows-with-matplotlib """
+
+    box_title = f"Shapes Domain:{args.domain_id}" if args.title == DEFAULT_TITLE else args.title
 
     # turn off toolbar - do this FIRST
     matplotlib.rcParams['toolbar'] = 'None'
@@ -45,6 +54,10 @@ def create_matplot(args, box_title):
     fig, axes = plt.subplots(figsize=args.figureXY, num=box_title)
     axes.set_xlim((0, args.graphx))
     axes.set_ylim((0, args.graphy))
+
+    # add a requested subtitle
+    if args.subtitle:
+        fig.suptitle(args.subtitle)
 
     # hide the axis ticks/subticks/labels
     axes.get_xaxis().set_visible(False)
@@ -66,25 +79,41 @@ def create_matplot(args, box_title):
     mngr.window.setGeometry(x, y, int(dx), int(dy))
 
     # set a background image  # TODO scale when resizing or specify "center"?
-    image = plt.imread("RTI_Logo_RGB-Color.png")
+    cwd = Connext.get_cwd(__file__)
+    image = plt.imread(f'{cwd}/RTI_Logo_RGB-Color.png')
     fig.figimage(image, xo=35, yo=120, zorder=3, alpha=0.1)
 
     return fig, axes
 
+def print_defaults(msg, dic):
+    print(msg)
+    for key, value in dic.items():
+        print(f'{key}: {value[1]} [{value[0]}]')
 
 def main(args):
 
-    if args.title == DEFAULT_TITLE:
-        title = f"Shapes Domain:{args.domain_id}"
-    else:
-        title = args.title
-    fig, axes = create_matplot(args, box_title=title)
+    if args.config_help:
+        parser = ConfigParser(args.config)
+        pub_dic_defaults = parser.get_pub_config(True)
+        sub_dic_defaults = parser.get_sub_config(True)
+        print_defaults('Subscriber defaults:', sub_dic_defaults)
+        print_defaults('\nPublisher defaults:', pub_dic_defaults)
+        sys.exit(0)
 
-    if args.subtitle:
-        fig.suptitle(args.subtitle)
+    fig, axes = create_matplot(args)
 
     connext_obj = None
-    if args.subscribe:
+    if args.config:
+        parser = ConfigParser(args.config)
+        cfg = parser.get_pub_config()
+        LOG.info(cfg) 
+        if cfg:
+            connext_obj = ConnextPub(args, cfg)
+        else:
+            cfg = parser.get_sub_config()
+            connext_obj = ConnextSub(args, cfg)
+    ## config OR command-line - sub OR pub only 
+    elif args.subscribe:
         connext_obj = ConnextSub(args)
     elif args.publish:
         connext_obj = ConnextPub(args)
