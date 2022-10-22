@@ -23,41 +23,65 @@ LOG = logging.getLogger(__name__)
 
 """Constants outside Object since there's a new MPLShape for each update"""
 """map the ShapeDemo color to the matplotlib color RGB code"""
-COLOR_MAP = {
-    'BLACK': 'k', 'WHITE': 'w',
-    'PURPLE': '#c03bff', 'BLUE': '#0632ff', 'RED': '#ff2600', 'GREEN': '#00fa00',
-    'YELLOW': '#fffb00', 'CYAN': '#00fdff', 'MAGENTA': '#ff41ff', 'ORANGE': '#ff9500'
-}
 PI = 3.14159
-HATCH_MAP = {0: None, 1: None, 2: "--", 3: "||"}
-
 ZORDER_INC = 1
+
 
 
 class Shape():
     """holds shape attributes and helpers"""
-
+    COLOR_MAP = {
+        'BLACK': 'k', 'WHITE': 'w',
+        'PURPLE': '#c03bff', 'BLUE': '#0632ff', 'RED': '#ff2600', 'GREEN': '#00fa00',
+        'YELLOW': '#fffb00', 'CYAN': '#00fdff', 'MAGENTA': '#ff41ff', 'ORANGE': '#ff9500'
+    }
+    HATCH_MAP = {0: None, 1: None, 2: "--", 3: "||"}
     shared_zorder = 10
 
-    def __init__(self, args, which, data, info):
-        """create flattened Shape attributes from DDS attributes"""
+    def __init__(self, seq, which, scolor, xy, size, angle=None, fillKind=None):
+        """generic constructor"""
+        self.scolor = scolor
+        self.seq = seq
         self.which = which
-        self.seq = info.reception_sequence_number.value
         self.zorder = ZORDER_INC
-
-        self.xy = data['x'], args.graphy - data['y']
-        self.size = data['shapesize'] / 2
-        self.scolor = data['color']  # keep readable color name
-        self.color = COLOR_MAP[self.scolor]
-        self.angle = data['angle'] if args.extended else 0
-        self.fillKind = int(data['fillKind']) if args.extended else 0
-        self.poly_create_func = {
+        self.poly_create_func = {  #TODO can this be a Class variable
             'C': self.create_circle,
             'S': self.create_square,
             'T': self.create_triangle
         }
+        # now init the MPL Shape params
+        self.color=self.COLOR_MAP[self.scolor]
+        self.xy = xy
+        self.size = size
+        self.angle = angle
+        self.fillKind = fillKind
         LOG.debug(f'created {self=}')
-
+        
+    @classmethod
+    def from_sample(cls, args, which, data, info):
+        """create flattened Shape attributes from DDS attributes"""
+        return cls(
+            seq=info.reception_sequence_number.value,
+            which=which,
+            scolor=data['color'],  # keep readable color name
+            xy=(data['x'], args.graphy - data['y']),
+            size=data['shapesize'] / 2,
+            angle=data['angle'] if args.extended else 0,
+            fillKind=int(data['fillKind']) if args.extended else 0
+        )
+   
+    @classmethod
+    def from_pub_sample(cls, which, scolor, xy, size, angle, fillKind):
+        return cls(
+            seq=42,
+            which=which,
+            scolor=scolor,  # keep readable color name
+            xy=xy,
+            size=size,
+            angle=angle,
+            fillKind=fillKind
+        )
+   
     def get_sequence_number(self):
         return self.seq
 
@@ -95,12 +119,12 @@ class Shape():
         """policy for edge color depends on face color and pub/sub"""
         if self.fillKind == 0:
             fc = self.color
-            ec = COLOR_MAP['RED'] if self.color == COLOR_MAP['BLUE'] else COLOR_MAP['BLUE']
+            ec = self.COLOR_MAP['RED'] if self.color == self.COLOR_MAP['BLUE'] else self.COLOR_MAP['BLUE']
         elif self.fillKind >= 2:
             # for patterns, edge_color controls the hash lines
-            fc, ec = COLOR_MAP['WHITE'], self.color
+            fc, ec = self.COLOR_MAP['WHITE'], self.color
         else:  # transparent
-            fc, ec = COLOR_MAP['WHITE'], COLOR_MAP['BLUE']
+            fc, ec = self.COLOR_MAP['WHITE'], self.COLOR_MAP['BLUE']
         LOG.debug(f'{self=} {ec=} {fc=}')
         return fc, ec
 
@@ -118,10 +142,11 @@ class Shape():
 
     def create_poly(self):
         """create a matplot polygon"""
+        func = self.poly_create_func[self.which]
         poly = self.poly_create_func[self.which]()
         fc, ec = self.get_face_and_edge_color()
         poly.set(ec=ec, fc=fc,
-                 hatch=HATCH_MAP[self.fillKind], zorder=self.zorder)
+                 hatch=self.HATCH_MAP[self.fillKind], zorder=self.zorder)
         return poly
 
     def __repr__(self):
@@ -131,3 +156,4 @@ class Shape():
         if self.angle:
             s += f' angle:{self.angle}'
         return s
+

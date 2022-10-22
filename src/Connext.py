@@ -20,6 +20,7 @@ import time
 from collections import Counter
 # Connext imports
 import rti.connextdds as dds
+from ShapeTypeExtended import ShapeTypeExtended
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -30,8 +31,9 @@ class Connext(ABC):
 
     def __init__(self, args):
         self.args = args
-        self.sample_count = 0
+        self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum
         self.participant = dds.DomainParticipant(args.domain_id)
+        self.sparticipant = dds.DomainParticipant(args.domain_id)
         self.qos_provider = self.get_qos_provider()
 
         type_name = "ShapeTypeExtended" if args.extended else "ShapeType"
@@ -40,6 +42,11 @@ class Connext(ABC):
             'C': dds.DynamicData.Topic(self.participant, "Circle", provider_type),
             'S': dds.DynamicData.Topic(self.participant, "Square", provider_type),
             'T': dds.DynamicData.Topic(self.participant, "Triangle", provider_type)
+        }
+        self.stopic_dic = {
+            'C': dds.Topic(self.sparticipant, "Circle", ShapeTypeExtended),
+            'S': dds.Topic(self.sparticipant, "Square", ShapeTypeExtended),
+            'T': dds.Topic(self.sparticipant, "Triangle", ShapeTypeExtended)
         }
         self.sample_counter = Counter()
 

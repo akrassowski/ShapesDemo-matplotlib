@@ -85,19 +85,20 @@ def create_matplot(args):
 
     return fig, axes
 
-def print_defaults(msg, dic):
+def print_defaults(msg, value_dic, help_dic):
     print(msg)
-    for key, value in dic.items():
-        print(f'{key}: {value[1]} [{value[0]}]')
+    for key, value in value_dic.items():
+        print(f'{str.rjust(key, 25)}: {help_dic[key]} [{value}]')
+    print('\n')
 
 def main(args):
 
     if args.config_help:
         parser = ConfigParser(args.config)
-        pub_dic_defaults = parser.get_pub_config(True)
-        sub_dic_defaults = parser.get_sub_config(True)
-        print_defaults('Subscriber defaults:', sub_dic_defaults)
-        print_defaults('\nPublisher defaults:', pub_dic_defaults)
+        pub_dic_defaults, pub_dic_help = parser.get_pub_config(True)
+        sub_dic_defaults, sub_dic_help = parser.get_sub_config(True)
+        print_defaults('Subscriber values and [default]:', sub_dic_defaults, sub_dic_help)
+        print_defaults('Publisher values and [default]:', pub_dic_defaults, pub_dic_help)
         sys.exit(0)
 
     fig, axes = create_matplot(args)

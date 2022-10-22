@@ -21,8 +21,8 @@ import time
 import rti.connextdds as dds
 
 from Connext import Connext
-from Shape import Shape
 from InstanceGen import InstanceGen
+from Shape import Shape
 
 LOG = logging.getLogger(__name__)
 
@@ -49,7 +49,6 @@ class ConnextSub(Connext):
 
     def start(self, fig, axes):
         """First, some globals and helpers"""
-        self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum
         self.instance_gen_dic = {}  # Topic-color: InstanceGen
         self.fig = fig
         self.axes = axes
@@ -59,7 +58,7 @@ class ConnextSub(Connext):
         """create/update a matplotlib polygon from the sample data, add to poly_dic
            remove the prior poly's edge"""
         self.sample_counter.update(f'{which}r')
-        shape = Shape(args=self.args, which=which,
+        shape = Shape.from_sample(args=self.args, which=which,
                       data=sample.data, info=sample.info)
         instance_gen_key = f'{which}-{shape.scolor}'  # TODO use API to get Key
         ###LOG.info(f'{sample=} {sample.get_key_value()=}')
