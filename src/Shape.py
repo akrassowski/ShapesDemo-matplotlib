@@ -27,7 +27,6 @@ PI = 3.14159
 ZORDER_INC = 1
 
 
-
 class Shape():
     """holds shape attributes and helpers"""
     COLOR_MAP = {
@@ -38,50 +37,50 @@ class Shape():
     HATCH_MAP = {0: None, 1: None, 2: "--", 3: "||"}
     shared_zorder = 10
 
-    def __init__(self, seq, which, scolor, xy, size, angle=None, fillKind=None):
+    def __init__(self, seq, which, color, xy, size, angle=None, fillKind=None):
         """generic constructor"""
-        self.scolor = scolor
+        self.color = color
         self.seq = seq
         self.which = which
         self.zorder = ZORDER_INC
-        self.poly_create_func = {  #TODO can this be a Class variable
+        self.poly_create_func = {
             'C': self.create_circle,
             'S': self.create_square,
             'T': self.create_triangle
         }
         # now init the MPL Shape params
-        self.color=self.COLOR_MAP[self.scolor]
+        self.color_code = self.COLOR_MAP[self.color]
         self.xy = xy
         self.size = size
         self.angle = angle
         self.fillKind = fillKind
         LOG.debug(f'created {self=}')
-        
+
     @classmethod
     def from_sample(cls, args, which, data, info):
         """create flattened Shape attributes from DDS attributes"""
         return cls(
             seq=info.reception_sequence_number.value,
             which=which,
-            scolor=data['color'],  # keep readable color name
+            color=data['color'],
             xy=(data['x'], args.graphy - data['y']),
             size=data['shapesize'] / 2,
             angle=data['angle'] if args.extended else 0,
             fillKind=int(data['fillKind']) if args.extended else 0
         )
-   
+
     @classmethod
-    def from_pub_sample(cls, which, scolor, xy, size, angle, fillKind):
+    def from_pub_sample(cls, which, color, xy, size, angle, fillKind):
         return cls(
             seq=42,
             which=which,
-            scolor=scolor,  # keep readable color name
+            color=color,
             xy=xy,
             size=size,
             angle=angle,
             fillKind=fillKind
         )
-   
+
     def get_sequence_number(self):
         return self.seq
 
@@ -118,11 +117,11 @@ class Shape():
     def get_face_and_edge_color(self, pub=False):
         """policy for edge color depends on face color and pub/sub"""
         if self.fillKind == 0:
-            fc = self.color
-            ec = self.COLOR_MAP['RED'] if self.color == self.COLOR_MAP['BLUE'] else self.COLOR_MAP['BLUE']
+            fc = self.color_code
+            ec = self.COLOR_MAP['RED'] if self.color == 'BLUE' else self.COLOR_MAP['BLUE']
         elif self.fillKind >= 2:
             # for patterns, edge_color controls the hash lines
-            fc, ec = self.COLOR_MAP['WHITE'], self.color
+            fc, ec = self.COLOR_MAP['WHITE'], self.color_code
         else:  # transparent
             fc, ec = self.COLOR_MAP['WHITE'], self.COLOR_MAP['BLUE']
         LOG.debug(f'{self=} {ec=} {fc=}')
@@ -150,10 +149,17 @@ class Shape():
         return poly
 
     def __repr__(self):
-        s = f'Shape:{self.which} seq:{self.seq} {self.xy} {self.size} {self.scolor} Z:{self.zorder}'
+        s = f'Shape:{self.which} seq:{self.seq} {self.xy} {self.size} {self.color} Z:{self.zorder}'
         if self.fillKind:
             s += f' fill:{self.fillKind}'
         if self.angle:
             s += f' angle:{self.angle}'
         return s
+
+# monkey-patch so this can be a Class variable
+Shape.poly_create_func2 = {  #TODO can this be a Class variable
+    'C': Shape.create_circle,
+    'S': Shape.create_square,
+    'T': Shape.create_triangle
+}
 

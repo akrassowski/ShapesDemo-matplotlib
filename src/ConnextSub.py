@@ -60,7 +60,7 @@ class ConnextSub(Connext):
         self.sample_counter.update(f'{which}r')
         shape = Shape.from_sample(args=self.args, which=which,
                       data=sample.data, info=sample.info)
-        instance_gen_key = f'{which}-{shape.scolor}'  # TODO use API to get Key
+        instance_gen_key = f'{which}-{shape.color}'  # TODO use API to get Key
         ###LOG.info(f'{sample=} {sample.get_key_value()=}')
         inst = self.instance_gen_dic.get(instance_gen_key)
         if not inst:
@@ -68,7 +68,7 @@ class ConnextSub(Connext):
             self.instance_gen_dic[instance_gen_key] = inst
         ix = inst.next()
         LOG.debug(f"SHAPE: {shape=}, {ix=}")
-        poly_key = self.form_poly_key(which, shape.scolor, ix)
+        poly_key = self.form_poly_key(which, shape.color, ix)
         poly = self.poly_dic.get(poly_key)
         if self.args.justdds:
             LOG.info("early exit")
@@ -88,7 +88,7 @@ class ConnextSub(Connext):
             poly.set_xy(xy)
         poly.set(lw=self.WIDE_EDGE_LINE_WIDTH, zorder=shape.zorder)
 
-        prev_poly_key = self.form_poly_key(which, shape.scolor, inst.get_prev_ix())
+        prev_poly_key = self.form_poly_key(which, shape.color, inst.get_prev_ix())
         prev_poly = self.poly_dic.get(prev_poly_key)
         if prev_poly:
             prev_poly.set(lw=self.THIN_EDGE_LINE_WIDTH)
