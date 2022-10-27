@@ -16,10 +16,11 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
+MAXX, MAXY = 240, 270
+
 def parse_args(args, default_title):
     """pass args to allow testing"""
     FIGX, FIGY = 2.375, 2.72  # match RTI ShapesDemo box size
-    MAXX, MAXY = 240, 270
     DEFAULT_QOS_FILE = './SimpleShape.xml'
     DEFAULT_QOS_LIB, DEFAULT_QOS_PROFILE = 'MyQosLibrary', 'MyProfile'
     DEFAULT_HISTORY = 6
