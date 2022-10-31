@@ -13,76 +13,77 @@
 
 # python imports
 import logging
-import os
-import sys
-import time
 
 # Connext imports
 import rti.connextdds as dds
-from ConfigParser import ConfigParser
 # It is required that the rtiddsgen be alreay run to create the type class
 # The generated <datatype>.py class file should be included here
 from ShapeTypeExtended import ShapeTypeExtended
-#from ShapeTypeExtended import ShapeType
+# from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
+from ArgParser import ArgParser
+from ConfigParser import ConfigParser
 from Connext import Connext
-##from InstanceGen import InstanceGen
 from Shape import Shape
-from ArgParser import MAXX, MAXY
 
 LOG = logging.getLogger(__name__)
-DEFAULT_SEQ = 42
 
-class ConnextPub(Connext):
+
+class ConnextPublisher(Connext):
+    """Publish only 1 shape for now"""
 
     def __init__(self, args, config=None):
-        """sparticipant = static (non-dynamic) used by Publisher vs. dynamic used by Subscriber arbitrarily"""
         super().__init__(args)
-        self.args = args
-        self.pub_dic = config
         self.publisher = dds.Publisher(self.sparticipant)
-        writer_qos = self.qos_provider.datawriter_qos
+        writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
         self.writer_dic = {}
         self.sample_dic = {}
         for which in 'CST':  ## TODO for now
             LOG.info(f'{self.stopic_dic=} \n{self.participant=}')
             #self.writer_dic[which] = dds.DataWriter(self.participant.implicit_publisher, self.stopic_dic[which])
             self.writer_dic[which] = dds.DataWriter(self.publisher, self.stopic_dic[which])
+        self.pub_dic = config
         LOG.info(self.pub_dic)
 
 
     def start(self, fig, axes):
         """First, some globals and helpers"""
-        self.fig = fig
-        self.axes = axes
-
-        #for publisher in self.pub_dic.keys():
-            #publisher_dic = config_dic[publisher]
+        super().start(fig, axes)
         for which in self.pub_dic.keys():
             self.publish_sample(which)
 
 
     def create_default_sample(self, which):
-        """TODO: copy from the config"""
+        """use the defaults to create a sample"""
+        LOG.debug(f'{which=}')
         sample = ShapeTypeExtended()
-        config, _ = ConfigParser.get_pub_config(default=True)
-        sample.x, sample.y = config['xy']
-        sample.color = config['color']
-        sample.size = config['shapesize']
+        defaults = self.pub_dic[which]
+        sample.x, sample.y = defaults['xy']
+        sample.color = defaults['color']
+        sample.shapesize = defaults['shapesize']
+        sample.fillKind = defaults['fillKind']
+        sample.angle = defaults['angle']
         return sample
 
-    @staticmethod
-    def _inc_with_wrap(value, inc, limit):
-        """add inc to value and wrap at limit"""
-        ##OLD new_value = value + inc
-        return (value + inc) % limit
-        ##OLD return 0 if new_value > limit else new_value
 
-    def move_shape(self, sample):
-        """update the xy coordinates of the shape"""
-        sample.x = self._inc_with_wrap(sample.x, self.args.delta_x, MAXX)
-        sample.y = self._inc_with_wrap(sample.y, self.args.delta_y, MAXY)
-        LOG.info(f'{sample=}')
+    @staticmethod
+    def _inc_with_bounce(value, inc, limit):
+        new_value = value + inc 
+        if new_value < 0:
+            inc *= -1
+            new_value = 0
+        elif new_value > limit:
+            inc *= -1
+            new_value = limit
+        return new_value, inc
+
+    def _move_shape(self, sample, which):
+        """move the shape"""
+        dx, dy = self.pub_dic[which]['delta_xy']
+        sample.x, dx = self._inc_with_bounce(sample.x, dx, ArgParser.MAXX)
+        sample.y, dy = self._inc_with_bounce(sample.y, dy, ArgParser.MAXY)
+        self.pub_dic[which]['delta_xy'] = dx, dy
+        LOG.debug(f'{sample=}')
         return sample
 
     def publish_sample(self, which):
@@ -92,22 +93,23 @@ class ConnextPub(Connext):
             LOG.debug(attrib_dic)
         except KeyError:
             return  ## no entry = nothing to do
-      
+
         sample = self.sample_dic.get(which)
         if sample:  ## update last sample
-            sample = self._move_shape(sample)
+            sample = self._move_shape(sample, which)
         else:  ## start with the default
             sample = self.create_default_sample(which)
 
         shape = Shape.from_pub_sample(
             which=which,
+            args=self.args,
             color=sample.color,
             xy=(sample.x, sample.y),
             size=sample.shapesize,
             angle=sample.angle,
             fillKind=sample.fillKind
         )
-        poly_key = self.form_poly_key(which, shape.color, DEFAULT_SEQ)
+        poly_key = self.form_poly_key(which, shape.color, 1)
         poly = self.poly_dic.get(poly_key)
         if self.args.justdds:
             LOG.info("early exit")
@@ -123,13 +125,13 @@ class ConnextPub(Connext):
         poly.set_xy(xy)
         poly.set(lw=self.THIN_EDGE_LINE_WIDTH, zorder=shape.zorder)
 
+        self.writer_dic[which].write(sample)  ## publish the sample
         self.sample_dic[which] = sample       ##   and remember it
 
 
-    def fetch_and_draw(self, ignoreMe):
-        """callback from animation"""
-        whiches = self.writer_dic.keys()
-        for which in whiches:
+    def fetch_and_draw(self, _):
+        """callback for matplotlib to update shapes"""
+        for which in self.writer_dic.keys():
             self.publish_sample(which)
 
         return self.poly_dic.values()

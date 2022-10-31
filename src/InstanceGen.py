@@ -9,11 +9,12 @@
 ###############################################################################
 
 """Instance Generator """
+""" Subscribed instances are differentiated by an instance id, manage the range"""
 
 # python imports
 import logging
 
-LOG = logging.getLogger(__name__)
+# LOG = logging.getLogger(__name__)
 
 
 class InstanceGen:

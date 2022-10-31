@@ -23,7 +23,6 @@ import rti.connextdds as dds
 from ShapeTypeExtended import ShapeTypeExtended
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.INFO)
 
 
 class Connext(ABC):
@@ -50,6 +49,11 @@ class Connext(ABC):
         }
         self.sample_counter = Counter()
 
+    def start(self, fig, axes):
+        """save the matplotlib params"""
+        self.fig = fig
+        self.axes = axes
+
     @staticmethod
     def form_poly_key(which, color, instance_num):
         return f'{which}-{color}-{instance_num}'
@@ -68,4 +72,5 @@ class Connext(ABC):
 
     @abstractmethod
     def fetch_and_draw(self):
+        """require any child implements this callback to matplotlib"""
         pass

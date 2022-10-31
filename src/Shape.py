@@ -70,13 +70,13 @@ class Shape():
         )
 
     @classmethod
-    def from_pub_sample(cls, which, color, xy, size, angle, fillKind):
+    def from_pub_sample(cls, args, which, color, xy, size, angle, fillKind):
         return cls(
             seq=42,
             which=which,
             color=color,
-            xy=xy,
-            size=size,
+            xy=(xy[0], args.graphy - xy[1]),
+            size=size / 2,
             angle=angle,
             fillKind=fillKind
         )

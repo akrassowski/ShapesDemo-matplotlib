@@ -29,12 +29,12 @@ except:
 
 
 # Connext imports
+from ArgParser import ArgParser
 from ConfigParser import ConfigParser
 from Connext import Connext
-from ConnextPub import ConnextPub
-from ConnextSub import ConnextSub
+from ConnextPublisher import ConnextPublisher
+from ConnextSubscriber import ConnextSubscriber
 
-from ArgParser import parse_args
 
 LOG = logging.getLogger(__name__)
 
@@ -85,63 +85,85 @@ def create_matplot(args):
 
     return fig, axes
 
-def print_defaults(msg, value_dic, help_dic):
-    print(msg)
-    for key, value in value_dic.items():
-        print(f'{str.rjust(key, 25)}: {help_dic[key]} [{value}]')
-    print('\n')
 
+def handle_config_help(args):
+    """print the defaults and exit"""
+
+    def _print_defaults(msg, value_dic, help_dic):
+        print(msg)
+        for key, value in value_dic.items():
+            print(f'{str.rjust(key, 25)}: {help_dic[key]} [{value}]')
+        print('\n')
+
+    parser = ConfigParser(args.config)
+    pub_dic_defaults, pub_dic_help = parser.get_pub_config(True)
+    sub_dic_defaults, sub_dic_help = parser.get_sub_config(True)
+    _print_defaults('Subscriber values and [default]:', sub_dic_defaults, sub_dic_help)
+    _print_defaults('Publisher values and [default]:', pub_dic_defaults, pub_dic_help)
+
+
+def get_connext_obj_or_die(args):
+    """create either a Publisher or a Sub from config or command-line"""
+    connext_obj = None
+    parser = ConfigParser(args.config)
+    if args.config:
+        pub_cfg = parser.get_pub_config()
+        sub_cfg = parser.get_sub_config()
+        LOG.info(f'{pub_cfg=} {sub_cfg=}') 
+        if pub_cfg and sub_cfg:
+            LOG.warning("Both pub and sub found, ignoring publisher")
+        if sub_cfg:
+            connext_obj = ConnextSubscriber(args, sub_cfg)
+        elif pub_cfg:
+            connext_obj = ConnextPublisher(args, pub_cfg)
+    ## config OR command-line - sub OR pub only 
+    elif args.subscribe:
+        sub_cfg = {}
+        for which in args.subscribe:
+            defaults, _ = parser.get_sub_config(default=True)
+            sub_cfg[which] = defaults
+        connext_obj = ConnextSubscriber(args, sub_cfg)
+    elif args.publish:
+        connext_obj = ConnextPublisher(args)
+    else:
+        LOG.error("Must run as either publisher or subscriber, terminating")
+        sys.exit(-1)
+    return connext_obj
+
+
+def handle_justdds(args, connext_obj):
+    """For debugging, run some callbacks"""
+    LOG.info(f'RUNNING {args.justdds=} reads')
+    for i in range(args.justdds):
+        connext_obj.fetch_and_draw(10)
+        LOG.info(f'{i} of {args.justdds}')
+    
 def main(args):
 
     if args.config_help:
-        parser = ConfigParser(args.config)
-        pub_dic_defaults, pub_dic_help = parser.get_pub_config(True)
-        sub_dic_defaults, sub_dic_help = parser.get_sub_config(True)
-        print_defaults('Subscriber values and [default]:', sub_dic_defaults, sub_dic_help)
-        print_defaults('Publisher values and [default]:', pub_dic_defaults, pub_dic_help)
+        handle_config_help(args)
         sys.exit(0)
 
-    fig, axes = create_matplot(args)
-
-    connext_obj = None
-    if args.config:
-        parser = ConfigParser(args.config)
-        cfg = parser.get_pub_config()
-        LOG.info(cfg) 
-        if cfg:
-            connext_obj = ConnextPub(args, cfg)
-        else:
-            cfg = parser.get_sub_config()
-            connext_obj = ConnextSub(args, cfg)
-    ## config OR command-line - sub OR pub only 
-    elif args.subscribe:
-        connext_obj = ConnextSub(args)
-    elif args.publish:
-        connext_obj = ConnextPub(args)
-    else:
-        print("Must run as either publisher or subscriber")
-        sys.exit(-1)
+    connext_obj = get_connext_obj_or_die(args)
 
     if args.justdds:
-        LOG.info(f'RUNNING {args.justdds=} reads')
-        for i in range(args.justdds):
-            fetch_and_draw(10)
-            LOG.info(f'{i} of {args.justdds}')
+        handle_justdds(args, connext_obj)
         sys.exit(0)
 
     # Create the animation and show
-    else:
-        # lower interval if updates are jerky
-        connext_obj.start(fig, axes)
-        ani = FuncAnimation(fig, connext_obj.fetch_and_draw, interval=20, blit=True )
+    fig, axes = create_matplot(args)
 
-        # Show the image and block until the window is closed
-        plt.show()
+    connext_obj.start(fig, axes)
+    # lower interval if updates are jerky
+    ani = FuncAnimation(fig, connext_obj.fetch_and_draw, interval=20, blit=True )
+
+    # Show the image and block until the window is closed
+    plt.show()
     LOG.info("Exiting...")
 
 
 if __name__ == "__main__":
-    args = parse_args(sys.argv, DEFAULT_TITLE)
+    args = ArgParser().parse_args(sys.argv, DEFAULT_TITLE)
     logging.basicConfig(
         format="%(asctime)-15s [%(levelname)s] %(funcName)s: %(message)s",
         level=args.log_level)
