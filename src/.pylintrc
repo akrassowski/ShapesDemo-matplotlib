@@ -175,7 +175,7 @@ function-naming-style=snake_case
 #function-rgx=
 
 # Good variable names which should always be accepted, separated by a comma.
-good-names=dx, dy, i, j,
+good-names=dx, dy, i, ix, j,
            x, y, xy,
            Run,
            _
@@ -591,7 +591,7 @@ signature-mutators=
 additional-builtins=
 
 # Tells whether unused global variables should be treated as a violation.
-allow-global-unused-variables=yes
+allow-global-unused-variables=no
 
 # List of names allowed to shadow builtins
 allowed-redefined-builtins=
@@ -609,7 +609,7 @@ dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
 ignored-argument-names=_.*|^ignored_|^unused_
 
 # Tells whether we should check for unused import in __init__ files.
-init-import=no
+init-import=yes
 
 # List of qualified module names which can have objects that can redefine
 # builtins.

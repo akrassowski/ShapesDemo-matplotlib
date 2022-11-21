@@ -78,6 +78,6 @@ class Matplotlib:
         return fig, axes, plt
 
     @staticmethod
-    def func_animation(figure, callback, interval, blit):
+    def func_animation(fig, callback, interval, blit):
         """passthru wrapper"""
-        return FuncAnimation(figure, callback, interval, blit)
+        return FuncAnimation(fig=fig, func=callback, interval=interval, blit=blit)

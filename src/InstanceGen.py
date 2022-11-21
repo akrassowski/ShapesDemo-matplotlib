@@ -9,10 +9,10 @@
 ###############################################################################
 
 """Instance Generator """
-""" Subscribed instances are differentiated by an instance id, manage the range"""
+# Subscribed instances are differentiated by an instance id, manage the range
 
 # python imports
-import logging
+#import logging
 
 # LOG = logging.getLogger(__name__)
 
@@ -22,17 +22,15 @@ class InstanceGen:
 
     def __init__(self, _range):
         self._range = _range
-        self.at = 0
+        self.current_ix = 0
         self.instance = 0
 
     def get_prev_ix(self):
-        """return the previous given number with no changes"""
-        return (self.at - 1 + self._range) % self._range
+        """@return the previous given number with no changes"""
+        return (self.current_ix - 1 + self._range) % self._range
 
     def next(self):
-        """return the next instance index and move along"""
-        self.at = self.instance
+        """@return the next instance index and move along"""
+        self.current_ix = self.instance
         self.instance = (self.instance + 1) % self._range
-        return self.at
-
-
+        return self.current_ix
