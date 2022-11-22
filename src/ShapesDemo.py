@@ -20,7 +20,7 @@ from ArgParser import ArgParser
 from ConfigParser import ConfigParser
 from ConnextPublisher import ConnextPublisher
 from ConnextSubscriber import ConnextSubscriber
-from Matplotlib import Matplotlib
+from MatplotlibWrapper import MatplotlibWrapper
 
 LOG = logging.getLogger(__name__)
 
@@ -83,13 +83,13 @@ def main(args):
 
     box_title = f"Shapes Domain:{args.domain_id}" \
         if args.title == DEFAULT_DIC['TITLE'] else args.title
-    fig, axes, plt = Matplotlib.create_matplot(
+    fig, axes, plt = MatplotlibWrapper.create_matplot(
         args.figure_xy, args.graph_xy, box_title, args.index, args.subtitle
     )
 
     connext_obj.start(fig, axes)
     # lower interval if updates are jerky
-    ref = Matplotlib.func_animation(fig, connext_obj.fetch_and_draw, interval=20, blit=True)
+    ref = MatplotlibWrapper.func_animation(fig, connext_obj.fetch_and_draw, interval=20, blit=True)
     # Show the image and block until the window is closed
     plt.show()
     LOG.info("Exiting...")
