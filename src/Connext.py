@@ -60,9 +60,9 @@ class Connext(ABC):
         self.axes = axes
 
     @staticmethod
-    def form_poly_key(which, color, instance_num):
-        """@return a key to retrieve a polygon; must have instance number to draw history"""
-        return f'{which}-{color}-{instance_num}'
+    def form_poly_key(which, color, instance_num=None):
+        """@return a key to a polygon; must have instance number to draw (subscriber) history"""
+        return f'{which}-{color}' + (f'-{instance_num}' if instance_num else "")
 
     def get_qos_provider(self):
         """fetch the qos_profile from the lib in the file"""
