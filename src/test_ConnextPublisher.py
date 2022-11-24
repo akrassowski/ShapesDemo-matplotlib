@@ -8,6 +8,8 @@ from ConnextPublisher import ConnextPublisher
 from ShapesDemo import DEFAULT_DIC
 
 LOG = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+#LOG.setLevel(logging.DEBUG)
 
 class Test(unittest.TestCase):
 

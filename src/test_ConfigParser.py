@@ -2,18 +2,77 @@
 
 from io import StringIO
 from parameterized import parameterized
+import logging
+from pprint import pprint
 import unittest
 
 from ConfigParser import ConfigParser
 from ShapesDemo import DEFAULT_DIC
+from ConnextPublisher import ConnextPublisher
+
+LOG = logging.getLogger(__name__)
+#logging.basicConfig(level=logging.DEBUG)
 
 TRIANGLE_CONFIG_FILENAME = 'pub_t.cfg'
 
 class Test(unittest.TestCase):
 
     def setUp(self):
+        '''"extended": "False",
+             "fillKind": 0,
+        '''
         self.parser = ConfigParser(DEFAULT_DIC)
+        self.config = """{
+        "pub1": { 
+          "square": {
+             "color": "COLOR1", "xy": [27, 37],
+             "angle": 45, "delta_angle": 2.0,
+             "delta_xy": [1,2], "size": 50
+           }
+        },
+        "pub2": { 
+           "square": {
+             "color": "COLOR2", "xy": [47, 57],
+             "angle": 90, "delta_angle": 3.0,
+             "delta_xy": [2,4], "size": 55
+           }
+        }}"""
+        self.config_multi = """{
+        "pub1": { 
+          "square": {
+             "color": "COLOR1", "xy": [27, 37],
+             "angle": 45, "delta_angle": 2.0,
+             "delta_xy": [1,2], "size": 50
+           }
+        },
+        "pub2": { 
+           "square": {
+             "color": "COLOR2", "xy": [47, 57],
+             "angle": 90, "delta_angle": 3.0,
+             "delta_xy": [2,4], "size": 55
+           }
+           "square2": {
+             "color": "COLOR2", "xy": [97, 97],
+             "angle": 99, "delta_angle": 9.0,
+             "delta_xy": [9,9], "size": 99
+           }
+        }}"""
 
+    def test_fixup(self):
+        COLOR = 'GREEN'
+        key_unknown = ConnextPublisher.form_pub_key('S', 'UNKNOWN')
+        self.parser.pub_dic[key_unknown] = self.parser.pub_dic_default
+        #pprint(self.parser.pub_dic_default)
+        self.parser.pub_dic[key_unknown]['color'] = COLOR
+        #pprint(self.parser.pub_dic)
+        self.parser._fixup_unknown('S', COLOR)
+        #pprint(self.parser.pub_dic)
+        key = ConnextPublisher.form_pub_key('S', COLOR)
+        self.assertEqual(self.parser.pub_dic[key]['color'], COLOR)
+        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'extended', 'fillKind', 'shapesize']
+        self.assertIsNone(self.parser.pub_dic.get(key_unknown))
+        for attr in attr_lis:
+            self.assertIsNotNone(self.parser.pub_dic[key][attr])
 
     def test_init_does_not_populate_sub_or_pub(self):
         self.assertFalse(self.parser.pub_dic)
@@ -31,7 +90,8 @@ class Test(unittest.TestCase):
         self.assertFalse(self.parser.pub_dic)
 
     def check_config_triangle(self):
-        self.assertEqual(self.parser.pub_dic['T']['color'], "RED")
+        key = ConnextPublisher.form_pub_key('T', "RED")
+        self.assertEqual(self.parser.pub_dic[key]['fillKind'], 3)
         self.assertIsNone(self.parser.pub_dic.get('C'))
         self.assertIsNone(self.parser.pub_dic.get('S'))
 
@@ -59,50 +119,83 @@ class Test(unittest.TestCase):
            "size": 50
         }}}"""
         self.parser.parse(StringIO(config))
-        self.assertIsNotNone(self.parser.pub_dic.get('S'))
-        self.assertEqual(self.parser.pub_dic['S']['color'], "YELLOW")
-        self.assertEqual(self.parser.pub_dic['S']['xy'], (27, 37))
-        self.assertEqual(self.parser.pub_dic['S']['angle'], 45.0)
-        self.assertEqual(self.parser.pub_dic['S']['delta_angle'], 2.0)
-        self.assertEqual(self.parser.pub_dic['S']['delta_xy'], (1,2))
-        self.assertEqual(self.parser.pub_dic['S']['shapesize'], 50)
+        key = ConnextPublisher.form_pub_key('S', "YELLOW")
+        self.assertIsNotNone(self.parser.pub_dic.get(key))
+        #self.assertEqual(self.parser.pub_dic[key]['color'], "YELLOW")
+        self.assertEqual(self.parser.pub_dic[key]['xy'], (27, 37))
+        self.assertEqual(self.parser.pub_dic[key]['angle'], 45.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 2.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (1,2))
+        self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
 
-    def todo_test_config_pub_square2(self):
-        config = """{
-        "pub": { 
-          "square": {
-             "color": "yellow",
-             "xy": [27, 37],
-             "angle": 45,
-             "delta_angle": 2.0,
-             "delta_xy": [1,2],
-             "size": 50
-           },
-           "triangle": {
-             "color": "Green",
-             "xy": [47, 57],
-             "angle": 90,
-             "delta_angle": 3.0,
-             "delta_xy": [2,4],
-             "size": 55
-           }
-        }}"""
+    def test_minimal(self):
+        config = """{"pub": { "square": {
+            "size": 33
+        }}}"""
         self.parser.parse(StringIO(config))
-        self.assertIsNotNone(self.parser.pub_dic.get('S'))
-        self.assertEqual(self.parser.pub_dic['S']['color'], "YELLOW")
-        self.assertEqual(self.parser.pub_dic['S']['xy'], (27, 37))
-        self.assertEqual(self.parser.pub_dic['S']['angle'], 45.0)
-        self.assertEqual(self.parser.pub_dic['S']['delta_angle'], 2.0)
-        self.assertEqual(self.parser.pub_dic['S']['delta_xy'], (1,2))
-        self.assertEqual(self.parser.pub_dic['S']['shapesize'], 50)
+        key = ConnextPublisher.form_pub_key('S', "BLUE")
+        self.assertIsNotNone(self.parser.pub_dic.get(key), f'{key=} {self.parser.pub_dic=}')
+        self.assertEqual(self.parser.pub_dic[key]['shapesize'], 33)
+        self.assertEqual(self.parser.pub_dic[key]['color'], 'BLUE')
+        self.assertIsNotNone(self.parser.pub_dic[key].get('xy'))
 
-        self.assertIsNotNone(self.parser.pub_dic.get('T'))
-        self.assertEqual(self.parser.pub_dic['T']['color'], "GREEN")
-        self.assertEqual(self.parser.pub_dic['T']['xy'], (27, 37))
-        self.assertEqual(self.parser.pub_dic['T']['angle'], 45.0)
-        self.assertEqual(self.parser.pub_dic['T']['delta_angle'], 2.0)
-        self.assertEqual(self.parser.pub_dic['T']['delta_xy'], (1,2))
-        self.assertEqual(self.parser.pub_dic['T']['shapesize'], 50)
+    def test_config_pub_square2(self):
+        COLOR1, COLOR2 = 'Yellow', 'Green'
+        config = self.config.replace("COLOR1", COLOR1).replace("COLOR2", COLOR2)
+        self.parser.parse(StringIO(config))
+        #print(f'{self.parser.pub_dic=}')
+        key = ConnextPublisher.form_pub_key('S', COLOR1.upper())
+        #print(f'{key=}')
+        self.assertIsNotNone(self.parser.pub_dic.get(key))
+        topic, color = ConnextPublisher.key_to_topic_and_color(key)
+        self.assertEqual(color, "YELLOW")
+        self.assertEqual(topic, "S")
+        self.assertEqual(self.parser.pub_dic[key]['xy'], (27, 37))
+        self.assertEqual(self.parser.pub_dic[key]['angle'], 45.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 2.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (1,2))
+        self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
+
+        key = ConnextPublisher.form_pub_key('S', COLOR2.upper())
+        self.assertIsNotNone(self.parser.pub_dic.get(key))
+        topic, color = ConnextPublisher.key_to_topic_and_color(key)
+        self.assertEqual(color, "GREEN")
+        self.assertEqual(topic, "S")
+        self.assertEqual(self.parser.pub_dic[key]['xy'], (47, 57))
+        self.assertEqual(self.parser.pub_dic[key]['angle'], 90.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 3.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (2, 4))
+        self.assertEqual(self.parser.pub_dic[key]['shapesize'], 55)
+
+    def test_config_pub_square_dup(self):
+        COLOR1, COLOR2 = 'Yellow', 'Green'
+        config = self.config.replace("COLOR1", COLOR1).replace("COLOR2", COLOR2)
+        config = config.replace("pub1", "pub").replace("pub2", "pub")
+        #pprint(config)
+        self.parser.parse(StringIO(config))
+        #print(f'{self.parser.pub_dic=}')
+        key = ConnextPublisher.form_pub_key('S', COLOR1.upper())
+        #print(f'{key=}')
+        self.assertIsNotNone(self.parser.pub_dic.get(key))
+        topic, color = ConnextPublisher.key_to_topic_and_color(key)
+        self.assertEqual(color, COLOR1.upper())
+        self.assertEqual(topic, "S")
+        self.assertEqual(self.parser.pub_dic[key]['xy'], (27, 37))
+        self.assertEqual(self.parser.pub_dic[key]['angle'], 45.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 2.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (1,2))
+        self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
+
+        key = ConnextPublisher.form_pub_key('S', COLOR2.upper())
+        self.assertIsNotNone(self.parser.pub_dic.get(key))
+        topic, color = ConnextPublisher.key_to_topic_and_color(key)
+        self.assertEqual(color, COLOR2.upper())
+        self.assertEqual(topic, "S")
+        self.assertEqual(self.parser.pub_dic[key]['xy'], (47, 57))
+        self.assertEqual(self.parser.pub_dic[key]['angle'], 90.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 3.0)
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (2, 4))
+        self.assertEqual(self.parser.pub_dic[key]['shapesize'], 55)
 
     def check_case_and_length(self, default, help_text):
         #print(f'{default=} {help_text=}')
