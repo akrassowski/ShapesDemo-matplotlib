@@ -51,6 +51,8 @@ class Shape():
         """generic constructor"""
         self.seq = seq
         self.which = which
+        if which not in 'CST':
+            raise ValueError(f'shape must be one of CST not {which}')
         self.limit_xy = limit_xy
         self.color = color
         self.zorder = ZORDER_INC
@@ -167,7 +169,7 @@ class Shape():
 
     def get_points(self):
         """Given size and center, return vertices; also move to top with zorder"""
-        LOG.info(f'{self.angle=}')
+        LOG.debug(f'{self.angle=}')
         Shape.shared_zorder += ZORDER_INC
         self.zorder = self.shared_zorder
         if self.which == 'C':
