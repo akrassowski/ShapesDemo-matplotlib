@@ -71,6 +71,7 @@ class ConnextPublisher(Connext):
         self.publisher = dds.Publisher(self.sparticipant)
         #writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
         self.pub_dic = {}  # defaults will be keyd by just shape; actual will be shape-color
+        self.shape_dic = {}
         self.sample_dic = {}
         self.writer_dic = {}
         self.pub_key_count = 1
@@ -108,8 +109,7 @@ class ConnextPublisher(Connext):
         sample.x, sample.y = defaults['xy']
         sample.color = defaults['color']
         sample.shapesize = defaults['shapesize']
-        breakpoint()
-        if isinstance(sample, ShapeTypeExtended):
+        if self.args.extended:
             sample.fillKind = defaults['fillKind']
             sample.angle = defaults['angle']
         return sample
@@ -119,18 +119,22 @@ class ConnextPublisher(Connext):
         which, color = self.key_to_topic_and_color(key)
         self.sample_counter.update(f'{which}w')
         sample = self.sample_dic.get(which)
-        new_sample = True
-        if sample:
-            new_sample = False
-        else:
+        new_sample = sample is None
+        if new_sample:
             sample = self.create_default_sample(key)
             LOG.debug(f'NEW {sample=}')
 
-        shape = Shape.from_pub_sample(
-            which=which,
-            limit_xy=self.args.graph_xy,
-            sample=sample
-        )
+            shape = Shape.from_pub_sample(
+                which=which,
+                limit_xy=self.args.graph_xy,
+                sample=sample,
+                extended=self.args.extended
+            )
+            self.shape_dic[which] = shape
+        else:
+            shape = self.shape_dic.get(which)
+            shape.update(sample, self.args.extended)
+
         LOG.debug(f'{shape=}')
         if not new_sample:
             LOG.debug(f'PUBDIC: {self.pub_dic[key]=}')
@@ -138,10 +142,10 @@ class ConnextPublisher(Connext):
             sample.x, sample.y = xy[0], Shape.mpl2sd(xy[1], self.args.graph_xy[1])
             # save the modified direction
             self.pub_dic[key]['delta_xy'] = delta_xy
-            shape.xy = xy
-            shape.angle += self.pub_dic[key]['delta_angle']
-            self.pub_dic[key]['angle'] += self.pub_dic[key]['delta_angle']
-            LOG.debug(f'set_xy {key=} {xy=} {shape.angle=}')
+            if self.args.extended:
+                # save mod angle
+                sample.angle += self.pub_dic[key]['delta_angle']
+            #LOG.debug(f'SET_XY {key=} {xy=} {shape.angle=}')
         poly_key = self.form_poly_key(which, shape.color)
         poly = self.poly_dic.get(poly_key)
         points = shape.get_points()

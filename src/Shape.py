@@ -68,10 +68,10 @@ class Shape():
         self.size = int(round(size / 2))  ## RTI ShapesDemo: top-to-bottom, MPL: radius
         self.angle = angle
         self.fill = fill
-        LOG.debug('created self=%s', self)
+        LOG.info('created self=%s', self)
 
     @classmethod
-    def from_sub_sample(cls, which, limit_xy, data, info, extended=False):
+    def from_sub_sample(cls, which, limit_xy, data, info, extended):
         """create flattened Shape attributes from DDS attributes"""
         return cls(
             seq=info.reception_sequence_number.value,
@@ -85,7 +85,7 @@ class Shape():
         )
 
     @classmethod
-    def from_pub_sample(cls, which, limit_xy, sample):
+    def from_pub_sample(cls, which, limit_xy, sample, extended):
         """create from a publisher sample"""
         return cls(
             seq=42,
@@ -94,9 +94,13 @@ class Shape():
             color=sample.color,
             xy=(sample.x, sample.y),
             size=sample.shapesize,
-            angle=sample.angle if isinstance(sample, ShapeTypeExtended) else 0,
-            fill=sample.fillKind if isinstance(sample, ShapeTypeExtended) else 0,
+            angle=sample.angle if extended else 0,
+            fill=sample.fillKind if extended else 0
         )
+
+    def update(self, sample, extended):
+        self.xy = sample.x, self.limit_xy[1] - sample.y
+        self.angle = sample.angle if extended else 0
 
 
     def get_sequence_number(self):
@@ -195,7 +199,7 @@ class Shape():
             raise ValueError(f'Shape type {self.which} not one of: CST')
 
         if self.angle:
-            LOG.info(f'ROTATING: {self.angle=}')
+            #LOG.info(f'ROTATING: {self.angle=}')
             points = self._rotate(points, self.angle * PI / 180)
         return points
 
