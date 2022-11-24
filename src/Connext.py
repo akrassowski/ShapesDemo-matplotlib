@@ -18,7 +18,7 @@ import os
 from collections import Counter
 # Connext imports
 import rti.connextdds as dds
-from ShapeTypeExtended import ShapeTypeExtended
+from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 LOG = logging.getLogger(__name__)
 
@@ -47,11 +47,18 @@ class Connext(ABC):
             'S': dds.DynamicData.Topic(self.participant, "Square", provider_type),
             'T': dds.DynamicData.Topic(self.participant, "Triangle", provider_type)
         }
-        self.stopic_dic = {
-            'C': dds.Topic(self.sparticipant, "Circle", ShapeTypeExtended),
-            'S': dds.Topic(self.sparticipant, "Square", ShapeTypeExtended),
-            'T': dds.Topic(self.sparticipant, "Triangle", ShapeTypeExtended)
-        }
+        if args.extended:
+            self.stopic_dic = {
+                'C': dds.Topic(self.sparticipant, "Circle", ShapeTypeExtended),
+                'S': dds.Topic(self.sparticipant, "Square", ShapeTypeExtended),
+                'T': dds.Topic(self.sparticipant, "Triangle", ShapeTypeExtended)
+            }
+        else:
+            self.stopic_dic = {
+                'C': dds.Topic(self.sparticipant, "Circle", ShapeType),
+                'S': dds.Topic(self.sparticipant, "Square", ShapeType),
+                'T': dds.Topic(self.sparticipant, "Triangle", ShapeType)
+            }
         self.sample_counter = Counter()
 
     def start(self, fig, axes):

@@ -69,7 +69,8 @@ class ConnextSubscriber(Connext):
             limit_xy=self.args.graph_xy,
             data=sample.data,
             info=sample.info,
-            extended=len(sample.data) > 4  # 4 for ShapeType, 6 for ShapeTypeExtended
+            #extended=len(sample.data) > 4  # 4 for ShapeType, 6 for ShapeTypeExtended
+            extended=self.args.extended
         )
         instance_gen_key = f'{which}-{shape.color}'
         #LOG.info('sample:%s', sample.data.to_string())

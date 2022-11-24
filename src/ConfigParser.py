@@ -66,7 +66,6 @@ class ConfigParser:
         self._pub_default_and_help('fillKind', 0,
                                   ('Fill pattern of the shape: ' + 
                                    '[0 (solid)], 1 (empty), 2 (horizontal), 3 (vertical)'))
-        self._pub_default_and_help('extended', False, 'Use ShapeTypeExtended instead of legacy ShapeType')
         self._pub_default_and_help('angle', 0, 'Shape rotation angle')
         self._pub_default_and_help(
             'delta_angle', 0, 'Rotation angle increment per update')
@@ -118,10 +117,6 @@ class ConfigParser:
         return letter
 
     @staticmethod
-    def is_extended(txt):
-        return txt[0:2] == 'EX'
-
-    @staticmethod
     def is_shapesize(txt):
         return txt[-4:] == 'SIZE'
 
@@ -150,7 +145,7 @@ class ConfigParser:
         return normalized
 
     @staticmethod
-    def normalize_bool(param, u_value):
+    def unused_normalize_bool(param, u_value):
         """Allow 'False' and '0' to be False"""
         normalized = bool(u_value)
         if u_value == 'FALSE' or u_value == '0':
@@ -239,7 +234,7 @@ class ConfigParser:
 
     def _fixup_unknown(self, shape, color):
         """helper - now that color is known, replace UNKNOWN with color"""
-        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'extended', 'fillKind', 'shapesize']
+        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'fillKind', 'shapesize']
         key_unknown = ConnextPublisher.form_pub_key(shape, 'UNKNOWN')
         key_known = ConnextPublisher.form_pub_key(shape, color)
         new_dic = {}
@@ -280,8 +275,6 @@ class ConfigParser:
                     self.pub_dic[key]['color'] = color
                 elif self.is_shapesize(attr_upper):
                     self.pub_dic[key]['shapesize'] = self.normalize_int('shapesize', value)
-                elif self.is_extended(attr_upper):
-                    self.pub_dic[key]['extended'] = self.normalize_bool('extended', value)
                 elif attr_upper == "ANGLE":
                     self.pub_dic[key]['angle'] = self.normalize_float('angle', value)
                 elif self.is_fill(attr_upper):

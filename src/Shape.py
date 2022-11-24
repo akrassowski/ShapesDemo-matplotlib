@@ -14,6 +14,7 @@
 # python imports
 import logging
 import math
+from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 # animation imports
 from matplotlib.patches import Circle, Polygon
@@ -93,8 +94,8 @@ class Shape():
             color=sample.color,
             xy=(sample.x, sample.y),
             size=sample.shapesize,
-            angle=sample.angle,
-            fill=sample.fillKind
+            angle=sample.angle if isinstance(sample, ShapeTypeExtended) else 0,
+            fill=sample.fillKind if isinstance(sample, ShapeTypeExtended) else 0,
         )
 
 

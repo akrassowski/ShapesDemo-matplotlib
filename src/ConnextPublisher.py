@@ -18,8 +18,7 @@ import logging
 import rti.connextdds as dds
 # It is required that the rtiddsgen be alreay run to create the type class
 # The generated <datatype>.py class file should be included here
-from ShapeTypeExtended import ShapeTypeExtended
-# from ShapeTypeExtended import ShapeType, ShapeTypeExtended
+from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 from Connext import Connext
 from Shape import Shape
@@ -93,7 +92,7 @@ class ConnextPublisher(Connext):
     @staticmethod
     def key_to_topic_and_color(text):
         result = text.split(DELIM)
-        return result
+        return result if len(result) > 1 else (result[0], 'BLUE')
 
     @staticmethod
     def form_pub_key(normalized_shape, normalized_color):
@@ -104,14 +103,15 @@ class ConnextPublisher(Connext):
         """use the defaults to create a sample"""
         #print(f'{which=} {self.pub_dic=}')
         LOG.debug(f'{which=}')
-        sample = ShapeTypeExtended()
+        sample = ShapeTypeExtended() if self.args.extended else ShapeType()
         defaults = self.pub_dic[which]  # just shape for defaults
         sample.x, sample.y = defaults['xy']
         sample.color = defaults['color']
         sample.shapesize = defaults['shapesize']
-        sample.extended = defaults['extended']
-        sample.fillKind = defaults['fillKind']
-        sample.angle = defaults['angle']
+        breakpoint()
+        if isinstance(sample, ShapeTypeExtended):
+            sample.fillKind = defaults['fillKind']
+            sample.angle = defaults['angle']
         return sample
 
 

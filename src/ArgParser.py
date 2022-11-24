@@ -45,7 +45,7 @@ class ArgParser:
         parser.add_argument('--domain_id', '-d', type=int, default=default['DOMAIN_ID'],
                             help="Specify Domain number 0-122 [default['DOMAIN_ID']")
         parser.add_argument('--extended', action=argparse.BooleanOptionalAction,
-                            help='Use ShapeTypeExtended [ShapeType]')
+                            help='Use ShapeTypeExtended for all shapes [ShapeType]')
         parser.add_argument('-f', '--figure_xy', default=default['FIG_XY'], type=int,
                             help=f"x,y of figure in inches [{default['FIG_XY']}]")
         parser.add_argument('-g', '--graph_xy', default=(default['MAX_XY']), type=int,

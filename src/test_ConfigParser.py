@@ -18,9 +18,6 @@ TRIANGLE_CONFIG_FILENAME = 'pub_t.cfg'
 class Test(unittest.TestCase):
 
     def setUp(self):
-        '''"extended": "False",
-             "fillKind": 0,
-        '''
         self.parser = ConfigParser(DEFAULT_DIC)
         self.config = """{
         "pub1": { 
@@ -69,7 +66,7 @@ class Test(unittest.TestCase):
         #pprint(self.parser.pub_dic)
         key = ConnextPublisher.form_pub_key('S', COLOR)
         self.assertEqual(self.parser.pub_dic[key]['color'], COLOR)
-        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'extended', 'fillKind', 'shapesize']
+        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'fillKind', 'shapesize']
         self.assertIsNone(self.parser.pub_dic.get(key_unknown))
         for attr in attr_lis:
             self.assertIsNotNone(self.parser.pub_dic[key][attr])
