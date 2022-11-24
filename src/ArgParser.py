@@ -51,7 +51,7 @@ class ArgParser:
         parser.add_argument('-g', '--graph_xy', default=(default['MAX_XY']), type=int,
                             help=f"width and height of graph in pixels [{default['MAX_XY']}]")
         parser.add_argument('-i', '--index', type=int, default=1,
-                            help='screen slot index [1]-6')
+                            help='screen slot index as 2 rows of 5 [1]-10')
         parser.add_argument('--log_level', '-l', type=int, default=logging.INFO,
                             help="logger level [40=INFO]")
         parser.add_argument('--qos_file', '-qf', type=str, default=default['QOS_FILE'],
