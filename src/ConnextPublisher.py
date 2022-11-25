@@ -133,13 +133,16 @@ class ConnextPublisher(Connext):
             self.shape_dic[which] = shape
         else:
             shape = self.shape_dic.get(which)
-            shape.update(sample, self.args.extended)
+            if self.args.extended:
+                shape.update_extended(sample.x, sample.y, sample.angle)
+            else:
+                shape.update(sample.x, sample.y)
 
         LOG.debug(f'{shape=}')
         if not new_sample:
             LOG.debug(f'PUBDIC: {self.pub_dic[key]=}')
             xy, delta_xy = shape.reverse_if_wall(self.pub_dic[key]['delta_xy'])
-            sample.x, sample.y = xy[0], Shape.mpl2sd(xy[1], self.args.graph_xy[1])
+            sample.x, sample.y = xy[0], shape.mpl2sd(xy[1])
             # save the modified direction
             self.pub_dic[key]['delta_xy'] = delta_xy
             if self.args.extended:

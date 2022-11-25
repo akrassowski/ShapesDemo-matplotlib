@@ -1,7 +1,6 @@
 #!/usr/bin/env python 
 
 import unittest
-#from ShapesDemo.Shape import Shape
 from Shape import Shape
 
 class Test(unittest.TestCase):
@@ -35,14 +34,14 @@ class Test(unittest.TestCase):
 
     def test_reverse_if_wall_horizontal(self):
         self.square.xy = 100, 100
-        delta_xy = 200, 0
+        delta_xy = [200, 0]
         self.assertTrue(delta_xy[0] > 0)
         new_xy, new_delta_xy = self.square.reverse_if_wall(delta_xy)
         self.assertTrue(new_delta_xy[0] < 0)
 
     def test_reverse_if_wall_vertical(self):
         xy = 100, 100
-        delta_xy = 0, 200
+        delta_xy = [0, 200]
         self.assertTrue(delta_xy[1] > 0)
         new_xy, new_delta_xy = self.square.reverse_if_wall(delta_xy)
         self.assertTrue(new_delta_xy[1] < 0)
@@ -50,28 +49,30 @@ class Test(unittest.TestCase):
     def test_reverse_if_wall_edge_pos(self):
         edge = self.square.size = 30  # we depend on size, so set it
         # start a few pixels from the edge
-        diff_x, diff_y = 2, 3
-        self.square.xy = (self.square.limit_xy[0] - diff_x, self.square.limit_xy[1] - diff_y)
+        size, diff_x, diff_y = self.square.size, 2, 3
+        self.square.xy = (self.square.limit_xy[0] - diff_x - size,
+                          self.square.limit_xy[1] - diff_y - size)
         # ensure we'll hit the wall by choosing a delta larger than the diff
-        delta_xy = 9, 10
+        orig_xy, delta_xy = [9, 10], [9, 10]
         out_xy, out_delta_xy = self.square.reverse_if_wall(delta_xy)
         self.assertEqual(out_xy[0], self.square.limit_xy[0] - edge)
         self.assertEqual(out_xy[1], self.square.limit_xy[1] - edge)
-        self.assertEqual(out_delta_xy[0], -delta_xy[0])
-        self.assertEqual(out_delta_xy[1], -delta_xy[1])
+        self.assertEqual(out_delta_xy[0], -orig_xy[0])
+        self.assertEqual(out_delta_xy[1], -orig_xy[1])
         
     def test_reverse_if_wall_edge_neg(self):
         edge = self.square.size = 30  # we depend on size, so set it
         # start a few pixels from the edge
         diff_x, diff_y = 2, 3
-        self.square.xy = (diff_x, diff_y)
+        self.square.xy = (self.square.size + diff_x, self.square.size + diff_y)
         # ensure we'll hit the wall by choosing a delta larger than the diff
-        delta_xy = -9, -10
+        orig_xy, delta_xy = [-9, -10], [-9, -10]
         out_xy, out_delta_xy = self.square.reverse_if_wall(delta_xy)
+        print(f'{out_xy=} {out_delta_xy=}')
         self.assertEqual(out_xy[0], edge)
         self.assertEqual(out_xy[1], edge)
-        self.assertEqual(out_delta_xy[0], -delta_xy[0])
-        self.assertEqual(out_delta_xy[1], -delta_xy[1])
+        self.assertEqual(out_delta_xy[0], -orig_xy[0])
+        self.assertEqual(out_delta_xy[1], -orig_xy[1])
         
     def test_get_points_square_0(self):
         self.square.xy = 0, 0
@@ -145,25 +146,15 @@ class Test(unittest.TestCase):
 
         self.assertEqual(sorted(start), sorted(end))
 
-    def test_reverse(self):
-        mpl = 100
-        sd = Shape.mpl2sd(mpl, self.limit)
-        new_mpl = Shape.sd2mpl(sd, self.limit)
-        self.assertEqual(mpl, new_mpl)
-
     def test_mpl2sd_0(self):
         mpl = 0
-        sd = Shape.mpl2sd(mpl, self.limit)
-        self.assertEqual(sd, self.limit)
+        sd = self.square.mpl2sd(mpl)
+        self.assertEqual(sd, self.square.limit_xy[1])
 
     def test_mpl2sd_10(self):
         mpl = 10
-        sd = Shape.mpl2sd(mpl, self.limit)
-        self.assertEqual(sd, 240)
-
-    def test_sd2mpl_10(self):
-        mpl = Shape.sd2mpl(240, self.limit)
-        self.assertEqual(mpl, 10)
+        sd = self.square.mpl2sd(mpl)
+        self.assertEqual(sd, 260)
 
     def test_get_points_circle(self):
         self.circle.xy = 5, 5

@@ -54,9 +54,9 @@ class ConfigParser:
 
     def init_defaults(self, defaults):
         self.defaults = defaults
-        self._pub_default_and_help('xy', (50, 50), 'Starting xy position')
+        self._pub_default_and_help('xy', [50, 50], 'Starting xy position')
         self._pub_default_and_help(
-            'delta_xy', (5, 5), 'Center x and y increment per update')
+            'delta_xy', [5, 5], 'Center x and y increment per update')
 
         color_list = COLOR_MAP.keys()
         trans = str.maketrans("", "", "'dict_keys()[]")
@@ -176,7 +176,7 @@ class ConfigParser:
             raise ValueError(self._err_msg(param, "a (x, y) tuple", value))
         LOG.debug(f'{param=} {value=} {type(value)=} {type(value[0])=}')
         try:
-            normalized = int(value[0]), int(value[1])
+            normalized = [int(value[0]), int(value[1])]  # list not tuple so updates can be assigned
         except Exception as exc:
             raise ValueError(self._err_msg(param, "a (x, y) tuple of floats", value)) from exc
         return normalized

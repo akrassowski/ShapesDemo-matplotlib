@@ -38,16 +38,6 @@ class Shape():
     """holds shape attributes and helpers"""
     shared_zorder = 10
 
-    @staticmethod
-    def sd2mpl(center_y, limit):
-        """@return the supplied ShapeDemo Y value converted to matplotlib pixels"""
-        return limit - center_y
-
-    @staticmethod
-    def mpl2sd(center_y, limit):
-        """@return the supplied MPL Y value converted to ShapeDemo pixels"""
-        return limit - center_y
-
     def __init__(self, seq, which, limit_xy, color, xy, size, angle=None, fill=None):
         """generic constructor"""
         self.seq = seq
@@ -98,54 +88,36 @@ class Shape():
             fill=sample.fillKind if extended else 0
         )
 
-    def update(self, sample, extended):
-        self.xy = sample.x, self.limit_xy[1] - sample.y
-        self.angle = sample.angle if extended else 0
+    def update(self, x, y):
+        """change position of existing non-extended shape"""
+        # ignores size/fill changes
+        self.xy = x, self.limit_xy[1] - y
 
+    def update_extended(self, x, y, angle):
+        """change position of existing shape"""
+        # ignores size/fill changes
+        self.xy = x, self.limit_xy[1] - y
+        self.angle = angle
+
+    def mpl2sd(self, center_y):
+        """@return the supplied MPL Y value converted to ShapeDemo pixels"""
+        return self.limit_xy[1] - center_y
 
     def get_sequence_number(self):
         """getter for sequence number"""
         return self.seq
 
-    @staticmethod
-    def _bound(value, delta, limit):
-        """helper for reversing from a wall; not nested for speed"""
-        new_value = value + delta
-        if new_value > limit:
-            delta = -delta
-            new_value = limit
-        elif new_value < 0:
-            delta = -delta
-            new_value = 0
-        return new_value, delta
-
-    @staticmethod
-    def _bound_edge(value, edge, delta, limit):
-        """helper for reversing from a wall; not nested for speed"""
-        #print(locals())
-        if delta < 0:
-            edge = -edge
-        new_value = value + delta
-        if new_value > limit:
-            delta = -delta
-            new_value = limit - edge
-        elif new_value < 0:
-            delta = -delta
-            new_value = -edge
-        #print(f'{new_value=} {delta=} {edge=}')
-        return new_value, delta
-
     def reverse_if_wall(self, delta_xy):
-        """@return reversed delta for those which hit a wall"""
-        # xy (center) is always positive; edge is added or subtracted based on movement direction
-        edge = self.size
-        #bound_x = xy[0] + (edge if delta_xy[0] > 0 else -edge)
-        #bound_y = xy[1] + (edge if delta_xy[1] > 0 else -edge)
-        #new_x, delta_x = self._bound(bound_x, delta_xy[0], self.limit_xy[0])
-        #new_y, delta_y = self._bound(bound_y, delta_xy[1], self.limit_xy[1])
-        new_x, delta_x = self._bound_edge(self.xy[0], edge, delta_xy[0], self.limit_xy[0])
-        new_y, delta_y = self._bound_edge(self.xy[1], edge, delta_xy[1], self.limit_xy[1])
-        return (new_x, new_y), (delta_x, delta_y)
+        """helper to compute new xy coordinate and delta"""
+        new_pos = [ self.xy[ix] + delta_xy[ix] for ix in range(2)]
+        for ix in range(2):
+            if new_pos[ix] + self.size > self.limit_xy[ix]:
+                delta_xy[ix] = -delta_xy[ix]
+                new_pos[ix] = self.limit_xy[ix] - self.size
+            elif new_pos[ix] - self.size < 0:
+                delta_xy[ix] = -delta_xy[ix]
+                new_pos[ix] = self.size
+        return new_pos, delta_xy
 
     @staticmethod
     def set_poly_center(poly, which, xy):

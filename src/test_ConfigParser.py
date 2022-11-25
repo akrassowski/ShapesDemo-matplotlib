@@ -119,10 +119,10 @@ class Test(unittest.TestCase):
         key = ConnextPublisher.form_pub_key('S', "YELLOW")
         self.assertIsNotNone(self.parser.pub_dic.get(key))
         #self.assertEqual(self.parser.pub_dic[key]['color'], "YELLOW")
-        self.assertEqual(self.parser.pub_dic[key]['xy'], (27, 37))
+        self.assertEqual(self.parser.pub_dic[key]['xy'], [27, 37])
         self.assertEqual(self.parser.pub_dic[key]['angle'], 45.0)
         self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 2.0)
-        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (1,2))
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], [1, 2])
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
 
     def test_minimal(self):
@@ -147,10 +147,10 @@ class Test(unittest.TestCase):
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
         self.assertEqual(color, "YELLOW")
         self.assertEqual(topic, "S")
-        self.assertEqual(self.parser.pub_dic[key]['xy'], (27, 37))
+        self.assertEqual(self.parser.pub_dic[key]['xy'], [27, 37])
         self.assertEqual(self.parser.pub_dic[key]['angle'], 45.0)
         self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 2.0)
-        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (1,2))
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], [1, 2])
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
 
         key = ConnextPublisher.form_pub_key('S', COLOR2.upper())
@@ -158,10 +158,10 @@ class Test(unittest.TestCase):
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
         self.assertEqual(color, "GREEN")
         self.assertEqual(topic, "S")
-        self.assertEqual(self.parser.pub_dic[key]['xy'], (47, 57))
+        self.assertEqual(self.parser.pub_dic[key]['xy'], [47, 57])
         self.assertEqual(self.parser.pub_dic[key]['angle'], 90.0)
         self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 3.0)
-        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (2, 4))
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], [2, 4])
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 55)
 
     def test_config_pub_square_dup(self):
@@ -177,10 +177,10 @@ class Test(unittest.TestCase):
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
         self.assertEqual(color, COLOR1.upper())
         self.assertEqual(topic, "S")
-        self.assertEqual(self.parser.pub_dic[key]['xy'], (27, 37))
+        self.assertEqual(self.parser.pub_dic[key]['xy'], [27, 37])
         self.assertEqual(self.parser.pub_dic[key]['angle'], 45.0)
         self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 2.0)
-        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (1,2))
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], [1, 2])
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
 
         key = ConnextPublisher.form_pub_key('S', COLOR2.upper())
@@ -188,10 +188,10 @@ class Test(unittest.TestCase):
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
         self.assertEqual(color, COLOR2.upper())
         self.assertEqual(topic, "S")
-        self.assertEqual(self.parser.pub_dic[key]['xy'], (47, 57))
+        self.assertEqual(self.parser.pub_dic[key]['xy'], [47, 57])
         self.assertEqual(self.parser.pub_dic[key]['angle'], 90.0)
         self.assertEqual(self.parser.pub_dic[key]['delta_angle'], 3.0)
-        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], (2, 4))
+        self.assertEqual(self.parser.pub_dic[key]['delta_xy'], [2, 4])
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 55)
 
     def check_case_and_length(self, default, help_text):
@@ -246,8 +246,8 @@ class Test_normalize_xy(unittest.TestCase):
         self.parser = ConfigParser(DEFAULT_DIC)
 
     @parameterized.expand([
-        [(7.0, 9.0), (7,9)],
-        [(7.1, 9.2), (7,9)]
+        [(7.0, 9.0), [7,9]],
+        [(7.1, 9.2), [7,9]]
     ])
         
     def test_normalize_xy(self, xy, result):
