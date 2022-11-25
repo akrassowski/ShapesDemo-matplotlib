@@ -14,6 +14,7 @@
 # python imports
 import logging
 import math
+from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 # animation imports
 from matplotlib.patches import Circle, Polygon
@@ -37,20 +38,12 @@ class Shape():
     """holds shape attributes and helpers"""
     shared_zorder = 10
 
-    @staticmethod
-    def sd2mpl(center_y, limit):
-        """@return the supplied ShapeDemo Y value converted to matplotlib pixels"""
-        return limit - center_y
-
-    @staticmethod
-    def mpl2sd(center_y, limit):
-        """@return the supplied MPL Y value converted to ShapeDemo pixels"""
-        return limit - center_y
-
     def __init__(self, seq, which, limit_xy, color, xy, size, angle=None, fill=None):
         """generic constructor"""
         self.seq = seq
         self.which = which
+        if which not in 'CST':
+            raise ValueError(f'shape must be one of CST not {which}')
         self.limit_xy = limit_xy
         self.color = color
         self.zorder = ZORDER_INC
@@ -65,10 +58,10 @@ class Shape():
         self.size = int(round(size / 2))  ## RTI ShapesDemo: top-to-bottom, MPL: radius
         self.angle = angle
         self.fill = fill
-        LOG.debug('created self=%s', self)
+        LOG.info('created self=%s', self)
 
     @classmethod
-    def from_sub_sample(cls, which, limit_xy, data, info, extended=False):
+    def from_sub_sample(cls, which, limit_xy, data, info, extended):
         """create flattened Shape attributes from DDS attributes"""
         return cls(
             seq=info.reception_sequence_number.value,
@@ -82,7 +75,7 @@ class Shape():
         )
 
     @classmethod
-    def from_pub_sample(cls, which, limit_xy, sample):
+    def from_pub_sample(cls, which, limit_xy, sample, extended):
         """create from a publisher sample"""
         return cls(
             seq=42,
@@ -91,54 +84,40 @@ class Shape():
             color=sample.color,
             xy=(sample.x, sample.y),
             size=sample.shapesize,
-            angle=sample.angle,
-            fill=sample.fillKind
+            angle=sample.angle if extended else 0,
+            fill=sample.fillKind if extended else 0
         )
 
+    def update(self, x, y):
+        """change position of existing non-extended shape"""
+        # ignores size/fill changes
+        self.xy = x, self.limit_xy[1] - y
+
+    def update_extended(self, x, y, angle):
+        """change position of existing shape"""
+        # ignores size/fill changes
+        self.xy = x, self.limit_xy[1] - y
+        self.angle = angle
+
+    def mpl2sd(self, center_y):
+        """@return the supplied MPL Y value converted to ShapeDemo pixels"""
+        return self.limit_xy[1] - center_y
 
     def get_sequence_number(self):
         """getter for sequence number"""
         return self.seq
 
-    @staticmethod
-    def _bound(value, delta, limit):
-        """helper for reversing from a wall; not nested for speed"""
-        new_value = value + delta
-        if new_value > limit:
-            delta = -delta
-            new_value = limit
-        elif new_value < 0:
-            delta = -delta
-            new_value = 0
-        return new_value, delta
-
-    @staticmethod
-    def _bound_edge(value, edge, delta, limit):
-        """helper for reversing from a wall; not nested for speed"""
-        #print(locals())
-        if delta < 0:
-            edge = -edge
-        new_value = value + delta
-        if new_value > limit:
-            delta = -delta
-            new_value = limit - edge
-        elif new_value < 0:
-            delta = -delta
-            new_value = -edge
-        #print(f'{new_value=} {delta=} {edge=}')
-        return new_value, delta
-
     def reverse_if_wall(self, delta_xy):
-        """@return reversed delta for those which hit a wall"""
-        # xy (center) is always positive; edge is added or subtracted based on movement direction
-        edge = self.size
-        #bound_x = xy[0] + (edge if delta_xy[0] > 0 else -edge)
-        #bound_y = xy[1] + (edge if delta_xy[1] > 0 else -edge)
-        #new_x, delta_x = self._bound(bound_x, delta_xy[0], self.limit_xy[0])
-        #new_y, delta_y = self._bound(bound_y, delta_xy[1], self.limit_xy[1])
-        new_x, delta_x = self._bound_edge(self.xy[0], edge, delta_xy[0], self.limit_xy[0])
-        new_y, delta_y = self._bound_edge(self.xy[1], edge, delta_xy[1], self.limit_xy[1])
-        return (new_x, new_y), (delta_x, delta_y)
+        """helper to compute new xy coordinate and delta"""
+        new_pos = [ self.xy[ix] + delta_xy[ix] for ix in range(2)]
+        for ix in range(2):
+            if new_pos[ix] + self.size > self.limit_xy[ix]:
+                delta_xy[ix] = -delta_xy[ix]
+                new_pos[ix] = self.limit_xy[ix] - self.size
+            elif new_pos[ix] - self.size < 0:
+                delta_xy[ix] = -delta_xy[ix]
+                new_pos[ix] = self.size
+        return new_pos, delta_xy
 
     @staticmethod
     def set_poly_center(poly, which, xy):
@@ -167,7 +146,7 @@ class Shape():
 
     def get_points(self):
         """Given size and center, return vertices; also move to top with zorder"""
-        LOG.info(f'{self.angle=}')
+        LOG.debug(f'{self.angle=}')
         Shape.shared_zorder += ZORDER_INC
         self.zorder = self.shared_zorder
         if self.which == 'C':
@@ -192,7 +171,7 @@ class Shape():
             raise ValueError(f'Shape type {self.which} not one of: CST')
 
         if self.angle:
-            LOG.info(f'ROTATING: {self.angle=}')
+            #LOG.info(f'ROTATING: {self.angle=}')
             points = self._rotate(points, self.angle * PI / 180)
         return points
 

@@ -63,9 +63,11 @@ class MatplotlibWrapper:
         # get the x, y, dx, dy
         mngr = plt.get_current_fig_manager()
         x, y, dx, dy = mngr.window.geometry().getRect()
-        row_y, space_x = VERTICAL_GAP + dy, HORIZONTAL_GAP+5
-        coord = [(0, 0), (dx+HORIZONTAL_GAP, 0), (2*dx+space_x, 0),
-                 (0, row_y), (dx+HORIZONTAL_GAP, row_y), (2*dx+space_x, row_y)]
+        row, space_x = VERTICAL_GAP + dy, HORIZONTAL_GAP+5
+        cols = [dx+HORIZONTAL_GAP, 2*dx+space_x, 3*dx+space_x, 4*dx+space_x]
+        # allow for up to 10 slots by index
+        coord = [(0, 0), (cols[0], 0), (cols[1], 0), (cols[2], 0), (cols[3], 0),
+                 (0, row), (cols[0], row), (cols[1], row), (cols[2], row), (cols[3], row)]
         x, y = coord[index-1]
         LOG.debug('x=%d, y=%d', x, y)
         mngr.window.setGeometry(x, y, int(dx), int(dy))
