@@ -65,10 +65,10 @@ def get_connext_obj_or_die(args):
 
 def handle_justdds(args, connext_obj):
     """For debugging, run some callbacks"""
-    LOG.info(f'RUNNING {args.justdds=} reads')
+    LOG.info('RUNNING args.justdds=%d reads', args.justdds)
     for i in range(args.justdds):
-        connext_obj.fetch_and_draw(10)
-        LOG.info(f'{i} of {args.justdds}')
+        connext_obj.draw(10)
+        LOG.info('%d of %d', i, args.justdds)
 
 def main(args):
     """MAIN ENTRY POINT"""
@@ -89,7 +89,7 @@ def main(args):
 
     connext_obj.start(fig, axes)
     # lower interval if updates are jerky
-    ref = MatplotlibWrapper.func_animation(fig, connext_obj.fetch_and_draw, interval=20, blit=True)
+    ref_unused = MatplotlibWrapper.func_animation(fig, connext_obj.draw, interval=20, blit=True)
     # Show the image and block until the window is closed
     plt.show()
     LOG.info("Exiting...")

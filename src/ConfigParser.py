@@ -56,7 +56,7 @@ class ConfigParser:
         self.defaults = defaults
         self._pub_default_and_help('xy', [50, 50], 'Starting xy position')
         self._pub_default_and_help(
-            'delta_xy', [5, 5], 'Center x and y increment per update')
+            'delta_xy', [5, 5], 'Center x and y change per update')
 
         color_list = COLOR_MAP.keys()
         trans = str.maketrans("", "", "'dict_keys()[]")
@@ -64,11 +64,11 @@ class ConfigParser:
         self._pub_default_and_help('color', defaults['COLOR'], 'Shape color: ' + colors)
         self._pub_default_and_help('shapesize', 30, 'Size of shape in pixels')
         self._pub_default_and_help('fillKind', 0,
-                                  ('Fill pattern of the shape: ' + 
+                                  ('Fill pattern of the ShapeExtendedType: ' + 
                                    '[0 (solid)], 1 (empty), 2 (horizontal), 3 (vertical)'))
-        self._pub_default_and_help('angle', 0, 'Shape rotation angle')
+        self._pub_default_and_help('angle', 0, 'Starting angle for ShapeExtendedType')
         self._pub_default_and_help(
-            'delta_angle', 0, 'Rotation angle increment per update')
+            'delta_angle', 0, 'Rotation angle change per update for ShapeExtendedType')
         # self.pub_default_and_help('reliability_type', 'best',
         #                           'type of reliability: best, reliable')
 
@@ -173,12 +173,13 @@ class ConfigParser:
     def normalize_xy(self, param, value):
         """Raise if there's something wrong"""
         if (not isinstance(value, tuple) and not isinstance(value, list)) or len(value) != 2:
-            raise ValueError(self._err_msg(param, "a (x, y) tuple", value))
+        #if (not isinstance(value, list)) or len(value) != 2:
+            raise ValueError(self._err_msg(param, "a (x, y) list", value))
         LOG.debug(f'{param=} {value=} {type(value)=} {type(value[0])=}')
         try:
             normalized = [int(value[0]), int(value[1])]  # list not tuple so updates can be assigned
         except Exception as exc:
-            raise ValueError(self._err_msg(param, "a (x, y) tuple of floats", value)) from exc
+            raise ValueError(self._err_msg(param, "a [x, y] list of int", value)) from exc
         return normalized
     # end Checkers and normalizers
     

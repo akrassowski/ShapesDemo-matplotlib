@@ -67,7 +67,7 @@ class ConnextPublisher(Connext):
 
     def __init__(self, args, config=None):
         super().__init__(args)
-        LOG.info(f'{args=} {config=}')
+        LOG.info('args=%s config=%s', args, config)
         self.publisher = dds.Publisher(self.sparticipant)
         #writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
         self.pub_dic = {}  # defaults will be keyd by just shape; actual will be shape-color
@@ -76,14 +76,13 @@ class ConnextPublisher(Connext):
         self.writer_dic = {}
         self.pub_key_count = 1
         if config:
-            LOG.debug(f'{config=}')
             for key in config.keys():
                 #LOG.debug(f'{self.stopic_dic=} \n{self.participant=}')
                 #shape, color = self.key_to_topic_and_color(key)
                 key = key[0]
                 self.writer_dic[key] = dds.DataWriter(self.publisher, self.stopic_dic[key])
             self.pub_dic = config
-        LOG.info(f'ConnextPublisher starting: {self.pub_dic=}')
+        LOG.info('ConnextPublisher starting: pub_dic=%s', self.pub_dic)
 
 
     def start(self, fig, axes):
@@ -92,18 +91,18 @@ class ConnextPublisher(Connext):
 
     @staticmethod
     def key_to_topic_and_color(text):
+        """@return tuple of topic (which) and color"""
         result = text.split(DELIM)
         return result if len(result) > 1 else (result[0], 'BLUE')
 
     @staticmethod
     def form_pub_key(normalized_shape, normalized_color):
-        key = f'{normalized_shape}{DELIM}{normalized_color}'
-        return key
+        return f'{normalized_shape}{DELIM}{normalized_color}'
 
     def create_default_sample(self, which):
         """use the defaults to create a sample"""
         #print(f'{which=} {self.pub_dic=}')
-        LOG.debug(f'{which=}')
+        LOG.debug('which=%s', which)
         sample = ShapeTypeExtended() if self.args.extended else ShapeType()
         defaults = self.pub_dic[which]  # just shape for defaults
         sample.x, sample.y = defaults['xy']
@@ -116,13 +115,14 @@ class ConnextPublisher(Connext):
 
 
     def publish_sample(self, key):
-        which, color = self.key_to_topic_and_color(key)
+        """publish a single sample"""
+        which, _ = self.key_to_topic_and_color(key)
         self.sample_counter.update(f'{which}w')
         sample = self.sample_dic.get(which)
         new_sample = sample is None
         if new_sample:
             sample = self.create_default_sample(key)
-            LOG.debug(f'NEW {sample=}')
+            LOG.debug('NEW sample=%s', sample)
 
             shape = Shape.from_pub_sample(
                 which=which,
@@ -138,9 +138,9 @@ class ConnextPublisher(Connext):
             else:
                 shape.update(sample.x, sample.y)
 
-        LOG.debug(f'{shape=}')
+        LOG.debug('shape=%s', shape)
         if not new_sample:
-            LOG.debug(f'PUBDIC: {self.pub_dic[key]=}')
+            LOG.debug('PUBDIC: pub_dic[key]=%s', self.pub_dic[key])
             xy, delta_xy = shape.reverse_if_wall(self.pub_dic[key]['delta_xy'])
             sample.x, sample.y = xy[0], shape.mpl2sd(xy[1])
             # save the modified direction
@@ -159,7 +159,7 @@ class ConnextPublisher(Connext):
         if not poly:
             poly = shape.create_poly()
             self.poly_dic[poly_key] = poly
-            LOG.debug(f"added {poly_key=}")
+            LOG.debug("added poly_key=%s", poly_key)
             if self.args.justdds:
                 LOG.warning("justdds: early exit")
                 return
@@ -175,7 +175,7 @@ class ConnextPublisher(Connext):
         poly.set(lw=self.THIN_EDGE_LINE_WIDTH, zorder=shape.zorder)
 
 
-    def fetch_and_draw(self, _):
+    def draw(self, _):
         """callback for matplotlib to update shapes"""
         for key in self.pub_dic.keys():
             self.publish_sample(key)

@@ -80,5 +80,5 @@ class Connext(ABC):
         return dds.QosProvider(qos_file, f'{self.args.qos_lib}::{self.args.qos_profile}')
 
     @abstractmethod
-    def fetch_and_draw(self, _):
+    def draw(self, _):
         """require any child implements this callback to matplotlib"""

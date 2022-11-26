@@ -30,6 +30,7 @@ class ShapeListener(dds.AnyDataReaderListener):
     listener_called = False  # TODO test me
 
     def on_liveliness_changed(self, reader, status):
+        """callback"""
         LOG.warning(f'liveliness changed {reader=} {status=}')
 
 class ConnextSubscriber(Connext):
@@ -38,6 +39,7 @@ class ConnextSubscriber(Connext):
     def __init__(self, args, config):
         super().__init__(args)
         self.instance_gen_dic = {}  # Topic-color: InstanceGen
+        self.shape_dic = {}  # Topic-color: InstanceGen
         self.subscriber = dds.Subscriber(self.participant)
         reader_qos = self.qos_provider.datareader_qos
         self.reader_dic = {}
@@ -64,20 +66,27 @@ class ConnextSubscriber(Connext):
         ## create/update a matplotlib polygon from the sample data, add to poly_dic
         ## remove the prior poly's edge
         self.sample_counter.update(f'{which}r')
-        shape = Shape.from_sub_sample(
-            which=which,
-            limit_xy=self.args.graph_xy,
-            data=sample.data,
-            info=sample.info,
-            #extended=len(sample.data) > 4  # 4 for ShapeType, 6 for ShapeTypeExtended
-            extended=self.args.extended
-        )
-        instance_gen_key = f'{which}-{shape.color}'
+        #instance_gen_key = f'{which}-{shape.color}'
+        instance_gen_key = f"{which}-{sample.data['color']}"
         #LOG.info('sample:%s', sample.data.to_string())
         inst = self.instance_gen_dic.get(instance_gen_key)
-        if not inst:
+        if inst:  # same key for shape
+            shape = self.shape_dic[instance_gen_key]
+            if self.args.extended:
+                shape.update_extended(sample.data['x'], sample.data['y'], sample.data['angle'])
+            else:
+                shape.update(sample.data['x'], sample.data['y'])
+        else:
             inst = InstanceGen(self.get_max_samples_per_instance(which))
             self.instance_gen_dic[instance_gen_key] = inst
+            shape = Shape.from_sub_sample(
+                which=which,
+                limit_xy=self.args.graph_xy,
+                data=sample.data,
+                info=sample.info,
+                extended=self.args.extended
+            )
+        self.shape_dic[instance_gen_key] = shape
         inst_ix = inst.next()
         LOG.debug('SHAPE: shape:%s, inst_ix=%d', shape, inst_ix)
         poly_key = self.form_poly_key(which, shape.color, inst_ix)
@@ -115,7 +124,7 @@ class ConnextSubscriber(Connext):
         LOG.debug('cntr:%d', self.sample_counter)
 
 
-    def fetch_and_draw(self, _):
+    def draw(self, _):
         """The animation function, called periodically in a set interval, reads the
         last image received and draws it"""
         readers = self.reader_dic.values()
