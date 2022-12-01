@@ -35,7 +35,7 @@ LOG = logging.getLogger(__name__)
 # mark either pub or sub active by clearing the other
 
 FILL_KIND_LIST = ['SOLID', 'EMPTY', 'HORIZONTAL', 'VERTICAL']
-
+VALID_SHAPE_LETTERS = 'CST'
 
 class ConfigParser:
     """parse the JSON config file populating a sub or pub dic"""
@@ -112,10 +112,9 @@ class ConfigParser:
     def normalize_shape(shape):
         """@return the normalized shape letter"""
         letter = shape[0].upper()
-        valid_letters = ['CST']
-        if letter not in valid_letters:
+        if letter not in VALID_SHAPE_LETTERS:
             raise ValueError(
-                ConfigParser.err_msg_('Shape first letter',  f'in {valid_letters}', shape))
+                ConfigParser.err_msg_('Shape first letter',  f'in {VALID_SHAPE_LETTERS}', shape))
         return letter
 
     @staticmethod
