@@ -89,7 +89,7 @@ def main(args):
 
     connext_obj.start(fig, axes)
     # lower interval if updates are jerky
-    ref_unused = MatplotlibWrapper.func_animation(fig, connext_obj.draw, interval=20, blit=True)
+    unused_ref = MatplotlibWrapper.func_animation(fig, connext_obj.draw, interval=20, blit=True)
     # Show the image and block until the window is closed
     plt.show()
     LOG.info("Exiting...")
