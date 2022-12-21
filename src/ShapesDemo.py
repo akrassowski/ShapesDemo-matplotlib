@@ -14,10 +14,10 @@
 import logging
 import sys
 
-
 # application imports
 from ArgParser import ArgParser
 from ConfigParser import ConfigParser
+from Connext import get_cwd
 from ConnextPublisher import ConnextPublisher
 from ConnextSubscriber import ConnextSubscriber
 from MatplotlibWrapper import MatplotlibWrapper
@@ -81,10 +81,14 @@ def main(args):
         handle_justdds(args, connext_obj)
         sys.exit(0)
 
+    #cwd = os.path.dirname(os.path.realpath(__file__))
+    cwd = get_cwd(__file__)
+    image_filename = f'{cwd}/RTI_Logo_RGB-Color.png'
+
     box_title = f"Shapes Domain:{args.domain_id}" \
         if args.title == DEFAULT_DIC['TITLE'] else args.title
     fig, axes, plt = MatplotlibWrapper.create_matplot(
-        args.figure_xy, args.graph_xy, box_title, args.index, args.subtitle
+        args.figure_xy, args.graph_xy, image_filename, box_title, args.index, args.subtitle
     )
 
     connext_obj.start(fig, axes)

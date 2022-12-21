@@ -29,6 +29,9 @@ class InstanceGen:
         """@return the previous given number with no changes"""
         return (self.current_ix - 1 + self._range) % self._range
 
+    def get_range(self):
+        return self._range
+
     def next(self):
         """@return the next instance index and move along"""
         self.current_ix = self.instance

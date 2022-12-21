@@ -13,7 +13,6 @@
 # python imports
 import logging
 import os
-from Connext import get_cwd
 
 LOG = logging.getLogger(__name__)
 
@@ -25,6 +24,7 @@ try:
         matplotlib.use('Qt5Agg')  # must precede pyplot
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
+    from matplotlib.lines import Line2D
 except ImportError as exc:
     LOG.fatal("No matplotlib %s", exc)
 
@@ -35,7 +35,7 @@ class MatplotlibWrapper:
     """Wrapper to create a graphing environment using the matplotlib library"""
 
     @staticmethod
-    def create_matplot(figure_xy, graph_xy, box_title="", index=0, subtitle=None):
+    def create_matplot(figure_xy, graph_xy, image_filename, box_title="", index=0, subtitle=None):
         """init the figure attributes - some is Mac-specific, some must be done b4 creating fig"""
         # taken from https://stackoverflow.com/questions/
         #     7449585/how-do-you-set-the-absolute-position-of-figure-windows-with-matplotlib
@@ -73,12 +73,17 @@ class MatplotlibWrapper:
         LOG.debug('x=%d, y=%d', x, y)
         mngr.window.setGeometry(x, y, int(dx), int(dy))
 
-        # set a background image  # TODO scale when resizing via onclick canvas events
-        cwd = get_cwd(__file__)
-        image = plt.imread(f'{cwd}/RTI_Logo_RGB-Color.png')
+        # set a background image  # TODO scale when resizing via on_click canvas events
+        image = plt.imread(image_filename)
         fig.figimage(image, xo=35, yo=120, zorder=3, alpha=0.1)
 
         return fig, axes, plt
+
+    @staticmethod
+    def create_line(endpoints, color, zorder):
+        """@return a 2d line from the pair of endpoints"""
+        line = Line2D(endpoints[0], endpoints[1], color=color, zorder=zorder, lw=2)
+        return line
 
     @staticmethod
     def func_animation(fig, callback, interval, blit):

@@ -234,7 +234,7 @@ class ConfigParser:
         LOG.debug('sub_dic: %s', self.sub_dic)
 
 
-    def _fixup_unknown(self, shape, color):
+    def fixup_unknown(self, shape, color):
         """helper - now that color is known, replace UNKNOWN with color"""
         attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'fillKind', 'shapesize']
         key_unknown = ConnextPublisher.form_pub_key(shape, 'UNKNOWN')
@@ -292,7 +292,7 @@ class ConfigParser:
                 elif attr_upper == "DELTA_ANGLE":
                     self.pub_dic[key]['delta_angle'] = self.normalize_float('delta_angle', value)
 
-            self._fixup_unknown(n_shape, color)
+            self.fixup_unknown(n_shape, color)
         #LOG.debug(f'{self.pub_dic=}')
 
     def get_config(self, parsed_args):

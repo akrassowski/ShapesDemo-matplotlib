@@ -1,14 +1,14 @@
-#!/usr/bin/env python 
-
+#!/usr/bin/env python
+"""Tests for Shape"""
 import unittest
-from Shape import Shape
+from Shape import Shape, COLOR_MAP
 
+# pylint: disable=missing-function-docstring
 class Test(unittest.TestCase):
-
-    limit = 250
+    """Tests for Shape"""
 
     def setUp(self):
- 
+
         self.circle = Shape(
             seq=71, which="C",
             limit_xy=(240, 270),
@@ -21,14 +21,12 @@ class Test(unittest.TestCase):
             limit_xy=(240, 270),
             color="RED",
             xy=(30,30), size=30,
-            angle=0, fill=0
         )
         self.triangle = Shape(
             seq=73, which="T",
             limit_xy=(240, 270),
             color="YELLOW",
             xy=(30,30), size=30,
-            angle=0, fill=0
         )
         self.limit_y = self.circle.limit_xy[1]
 
@@ -36,14 +34,14 @@ class Test(unittest.TestCase):
         self.square.xy = 100, 100
         delta_xy = [200, 0]
         self.assertTrue(delta_xy[0] > 0)
-        new_xy, new_delta_xy = self.square.reverse_if_wall(delta_xy)
+        _, new_delta_xy = self.square.reverse_if_wall(delta_xy)
         self.assertTrue(new_delta_xy[0] < 0)
 
     def test_reverse_if_wall_vertical(self):
-        xy = 100, 100
+        self.square.xy = 100, 100
         delta_xy = [0, 200]
         self.assertTrue(delta_xy[1] > 0)
-        new_xy, new_delta_xy = self.square.reverse_if_wall(delta_xy)
+        _, new_delta_xy = self.square.reverse_if_wall(delta_xy)
         self.assertTrue(new_delta_xy[1] < 0)
 
     def test_reverse_if_wall_edge_pos(self):
@@ -59,7 +57,7 @@ class Test(unittest.TestCase):
         self.assertEqual(out_xy[1], self.square.limit_xy[1] - edge)
         self.assertEqual(out_delta_xy[0], -orig_xy[0])
         self.assertEqual(out_delta_xy[1], -orig_xy[1])
-        
+
     def test_reverse_if_wall_edge_neg(self):
         edge = self.square.size = 30  # we depend on size, so set it
         # start a few pixels from the edge
@@ -68,12 +66,12 @@ class Test(unittest.TestCase):
         # ensure we'll hit the wall by choosing a delta larger than the diff
         orig_xy, delta_xy = [-9, -10], [-9, -10]
         out_xy, out_delta_xy = self.square.reverse_if_wall(delta_xy)
-        print(f'{out_xy=} {out_delta_xy=}')
+        #print(f'{out_xy=} {out_delta_xy=}')
         self.assertEqual(out_xy[0], edge)
         self.assertEqual(out_xy[1], edge)
         self.assertEqual(out_delta_xy[0], -orig_xy[0])
         self.assertEqual(out_delta_xy[1], -orig_xy[1])
-        
+
     def test_get_points_square_0(self):
         self.square.xy = 0, 0
         self.square.size = 15
@@ -109,10 +107,10 @@ class Test(unittest.TestCase):
         self.square.angle = 0
         start = sorted(self.square.get_points())
         #self.assertEqual(start[
-        print(start)
+        #print(start)
         self.square.angle = 90
         end = sorted(self.square.get_points())
-        print(end)
+        #print(end)
         self.assertEqual(start, end)
 
     def test_get_points_square_45x2(self):
@@ -137,32 +135,54 @@ class Test(unittest.TestCase):
         obj = self.triangle
         obj.xy = 0, 0
         obj.size = 15
-        #obj.angle = 0
         start = obj.get_points()
-        for n in range(0, 361, 30):
-            obj.angle = n
+        for obj.angle in range(0, 361, 30):
             end = obj.get_points()
-            print(f'{n=}: {sorted(end)=}')
+            #print(f'{n=}: {sorted(end)=}')
 
         self.assertEqual(sorted(start), sorted(end))
 
     def test_mpl2sd_0(self):
-        mpl = 0
-        sd = self.square.mpl2sd(mpl)
+        sd = self.square.mpl2sd(0)
         self.assertEqual(sd, self.square.limit_xy[1])
 
     def test_mpl2sd_10(self):
-        mpl = 10
-        sd = self.square.mpl2sd(mpl)
-        self.assertEqual(sd, 260)
+        result = self.square.mpl2sd(10)
+        self.assertEqual(result, 260)
 
     def test_get_points_circle(self):
         self.circle.xy = 5, 5
         points = self.circle.get_points()
         self.assertEqual(points, (5, 5))
 
+    def test_example_colors(self):
+        fcolor, ecolor = self.circle.get_face_and_edge_color_code()
+        self.assertEqual(fcolor, COLOR_MAP['GREEN'])
+        self.assertEqual(ecolor, COLOR_MAP['BLUE'])
+        fcolor, ecolor = self.square.get_face_and_edge_color_code()
+        self.assertEqual(fcolor, COLOR_MAP['RED'])
+        self.assertEqual(ecolor, COLOR_MAP['BLUE'])
+        fcolor, ecolor = self.triangle.get_face_and_edge_color_code()
+        self.assertEqual(fcolor, COLOR_MAP['YELLOW'])
+        self.assertEqual(ecolor, COLOR_MAP['BLUE'])
+
+
+    def test_colors(self):
+        square = Shape(777, 'S', [100, 100], 'BLUE', [50, 50], 30)
+        fcolor, ecolor = square.get_face_and_edge_color_code()
+        self.assertEqual(fcolor, COLOR_MAP['BLUE'])
+        self.assertEqual(ecolor, COLOR_MAP['RED'])
+
+    def test_color_compute_blue(self):
+        fcolor, ecolor = Shape.compute_face_and_edge_color_code(0, 'BLUE')
+        self.assertEqual(fcolor, COLOR_MAP['BLUE'])
+        self.assertEqual(ecolor, COLOR_MAP['RED'])
+
+    def test_color_compute_green(self):
+        fcolor, ecolor = Shape.compute_face_and_edge_color_code(0, 'GREEN')
+        self.assertEqual(fcolor, COLOR_MAP['GREEN'])
+        self.assertEqual(ecolor, COLOR_MAP['BLUE'])
 
 
 if __name__ == '__main__':
     unittest.main()
-

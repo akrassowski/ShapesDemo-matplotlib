@@ -1,71 +1,73 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
+"""tests for ConnextSubscriber"""
 
 from io import StringIO
-from parameterized import parameterized
-import logging
-from pprint import pprint
+#import logging
+#from pprint import pprint
 import unittest
+from parameterized import parameterized
 
 from ConfigParser import ConfigParser
 from ShapesDemo import DEFAULT_DIC
 from ConnextPublisher import ConnextPublisher
 
-LOG = logging.getLogger(__name__)
+#LOG = logging.getLogger(__name__)
 #logging.basicConfig(level=logging.DEBUG)
 
 TRIANGLE_CONFIG_FILENAME = 'pub_t.cfg'
 
+# pylint: disable=missing-function-docstring
 class Test(unittest.TestCase):
-
+    """tests for ConnextSubscriber"""
     def setUp(self):
         self.parser = ConfigParser(DEFAULT_DIC)
         self.config = """{
-        "pub1": { 
+        "pub1": {
           "square": {
-             "color": "COLOR1", "xy": [27, 37],
+             "color": "color1", "xy": [27, 37],
              "angle": 45, "delta_angle": 2.0,
              "delta_xy": [1,2], "size": 50
            }
         },
-        "pub2": { 
+        "pub2": {
            "square": {
-             "color": "COLOR2", "xy": [47, 57],
+             "color": "color2", "xy": [47, 57],
              "angle": 90, "delta_angle": 3.0,
              "delta_xy": [2,4], "size": 55
            }
         }}"""
         self.config_multi = """{
-        "pub1": { 
+        "pub1": {
           "square": {
-             "color": "COLOR1", "xy": [27, 37],
+             "color": "color1", "xy": [27, 37],
              "angle": 45, "delta_angle": 2.0,
              "delta_xy": [1,2], "size": 50
            }
         },
-        "pub2": { 
+        "pub2": {
            "square": {
-             "color": "COLOR2", "xy": [47, 57],
+             "color": "color2", "xy": [47, 57],
              "angle": 90, "delta_angle": 3.0,
              "delta_xy": [2,4], "size": 55
            }
            "square2": {
-             "color": "COLOR2", "xy": [97, 97],
+             "color": "color2", "xy": [97, 97],
              "angle": 99, "delta_angle": 9.0,
              "delta_xy": [9,9], "size": 99
            }
         }}"""
 
     def test_fixup(self):
-        COLOR = 'GREEN'
+        color = 'GREEN'
         key_unknown = ConnextPublisher.form_pub_key('S', 'UNKNOWN')
         self.parser.pub_dic[key_unknown] = self.parser.pub_dic_default
         #pprint(self.parser.pub_dic_default)
-        self.parser.pub_dic[key_unknown]['color'] = COLOR
+        self.parser.pub_dic[key_unknown]['color'] = color
         #pprint(self.parser.pub_dic)
-        self.parser._fixup_unknown('S', COLOR)
+        self.parser.fixup_unknown('S', color)
         #pprint(self.parser.pub_dic)
-        key = ConnextPublisher.form_pub_key('S', COLOR)
-        self.assertEqual(self.parser.pub_dic[key]['color'], COLOR)
+        key = ConnextPublisher.form_pub_key('S', color)
+        self.assertEqual(self.parser.pub_dic[key]['color'], color)
         attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'fillKind', 'shapesize']
         self.assertIsNone(self.parser.pub_dic.get(key_unknown))
         for attr in attr_lis:
@@ -101,7 +103,7 @@ class Test(unittest.TestCase):
         self.check_config_triangle()
 
     def test_config_triangle_from_stream(self):
-        with open(TRIANGLE_CONFIG_FILENAME, "r") as cfg_file:
+        with open(TRIANGLE_CONFIG_FILENAME, "r", encoding='utf-8') as cfg_file:
             contents = cfg_file.read()
         stream = StringIO(contents)
         self.parser.parse(stream)
@@ -137,11 +139,11 @@ class Test(unittest.TestCase):
         self.assertIsNotNone(self.parser.pub_dic[key].get('xy'))
 
     def test_config_pub_square2(self):
-        COLOR1, COLOR2 = 'Yellow', 'Green'
-        config = self.config.replace("COLOR1", COLOR1).replace("COLOR2", COLOR2)
+        color1, color2 = 'Yellow', 'Green'
+        config = self.config.replace("color1", color1).replace("color2", color2)
         self.parser.parse(StringIO(config))
         #print(f'{self.parser.pub_dic=}')
-        key = ConnextPublisher.form_pub_key('S', COLOR1.upper())
+        key = ConnextPublisher.form_pub_key('S', color1.upper())
         #print(f'{key=}')
         self.assertIsNotNone(self.parser.pub_dic.get(key))
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
@@ -153,7 +155,7 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parser.pub_dic[key]['delta_xy'], [1, 2])
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
 
-        key = ConnextPublisher.form_pub_key('S', COLOR2.upper())
+        key = ConnextPublisher.form_pub_key('S', color2.upper())
         self.assertIsNotNone(self.parser.pub_dic.get(key))
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
         self.assertEqual(color, "GREEN")
@@ -165,17 +167,17 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 55)
 
     def test_config_pub_square_dup(self):
-        COLOR1, COLOR2 = 'Yellow', 'Green'
-        config = self.config.replace("COLOR1", COLOR1).replace("COLOR2", COLOR2)
+        color1, color2 = 'Yellow', 'Green'
+        config = self.config.replace("color1", color1).replace("color2", color2)
         config = config.replace("pub1", "pub").replace("pub2", "pub")
         #pprint(config)
         self.parser.parse(StringIO(config))
         #print(f'{self.parser.pub_dic=}')
-        key = ConnextPublisher.form_pub_key('S', COLOR1.upper())
+        key = ConnextPublisher.form_pub_key('S', color1.upper())
         #print(f'{key=}')
         self.assertIsNotNone(self.parser.pub_dic.get(key))
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
-        self.assertEqual(color, COLOR1.upper())
+        self.assertEqual(color, color1.upper())
         self.assertEqual(topic, "S")
         self.assertEqual(self.parser.pub_dic[key]['xy'], [27, 37])
         self.assertEqual(self.parser.pub_dic[key]['angle'], 45.0)
@@ -183,10 +185,10 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parser.pub_dic[key]['delta_xy'], [1, 2])
         self.assertEqual(self.parser.pub_dic[key]['shapesize'], 50)
 
-        key = ConnextPublisher.form_pub_key('S', COLOR2.upper())
+        key = ConnextPublisher.form_pub_key('S', color2.upper())
         self.assertIsNotNone(self.parser.pub_dic.get(key))
         topic, color = ConnextPublisher.key_to_topic_and_color(key)
-        self.assertEqual(color, COLOR2.upper())
+        self.assertEqual(color, color2.upper())
         self.assertEqual(topic, "S")
         self.assertEqual(self.parser.pub_dic[key]['xy'], [47, 57])
         self.assertEqual(self.parser.pub_dic[key]['angle'], 90.0)
@@ -206,10 +208,15 @@ class Test(unittest.TestCase):
     def test_get_pub_config(self):
         self.parser.parse('pub_t.cfg')
         pub_cfg = self.parser.get_pub_config()
-        sub_cfg = self.parser.get_sub_config()
+        self.assertEqual(pub_cfg['T;RED']['color'], 'RED')
 
     def test_get_sub_config(self):
-        pass
+        self.parser.parse('sub_cs.cfg')
+        sub_cfg = self.parser.get_sub_config()
+        #print(sub_cfg)
+        self.assertIsNotNone(sub_cfg.get('C'))
+        self.assertIsNotNone(sub_cfg.get('S'))
+        self.assertIsNone(sub_cfg.get('T'))
 
     def test_get_pub_config_defaults(self):
         default, help_text = self.parser.get_pub_config(True)
@@ -218,16 +225,17 @@ class Test(unittest.TestCase):
     def test_get_sub_config_defaults(self):
         default, help_text = self.parser.get_sub_config(True)
         self.check_case_and_length(default, help_text)
-        
+
     def test_normalize_xy_too_few(self):
         with self.assertRaises(ValueError):
-            xy = self.parser.normalize_xy('too_few', (1, ))
+            _ = self.parser.normalize_xy('too_few', (1, ))
 
     def test_normalize_xy_too_many(self):
         with self.assertRaises(ValueError):
-            xy = self.parser.normalize_xy('too_many', (1, 2, 3))
+            _ = self.parser.normalize_xy('too_many', (1, 2, 3))
 
 class Test_normalize_shape(unittest.TestCase):
+    """Parameter test for normalize_shape functions"""
     def setUp(self):
         self.parser = ConfigParser(DEFAULT_DIC)
 
@@ -236,12 +244,13 @@ class Test_normalize_shape(unittest.TestCase):
         ['Square', 'S'],
         ['triangle', 'T'],
     ])
-        
+
     def test_normalize_shape(self, param, result):
         shape = self.parser.normalize_shape(param)
         self.assertEqual(result, shape)
 
 class Test_normalize_xy(unittest.TestCase):
+    """Parameter test for normalize_xy functions"""
     def setUp(self):
         self.parser = ConfigParser(DEFAULT_DIC)
 
@@ -249,11 +258,10 @@ class Test_normalize_xy(unittest.TestCase):
         [(7.0, 9.0), [7,9]],
         [(7.1, 9.2), [7,9]]
     ])
-        
+
     def test_normalize_xy(self, xy, result):
         xy = self.parser.normalize_xy('float', xy)
         self.assertEqual(result, xy)
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -1,9 +1,12 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
+"""Testing of the ConnextSubscriber module"""
 import unittest
 from ConnextSubscriber import ConnextSubscriber
+# pylint: disable=missing-function-docstring
 
-class Testing(unittest.TestCase):
+class Test(unittest.TestCase):
+    """Testing of the ConnextSubscriber module"""
 
     def setup(self):
         self.sub = ConnextSubscriber(args)
@@ -20,4 +23,3 @@ class Testing(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -9,22 +9,29 @@
 ###############################################################################
 
 """Implements multiplotlib shape class (MPLShape)"""
-
+"""Interface to App for all things shapey
+   Shape -> 
+     color, (x, y), size, fill, angle
+     polygon_list (self, gone)
+     plot - axes, patches_list
+     publisher - delta_xy, delta_angle
+     subscriber - history sibling refs
+"""
 
 # python imports
 import logging
 import math
-from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 # animation imports
 from matplotlib.patches import Circle, Polygon
 
-LOG = logging.getLogger(__name__)
+#from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 
 # Constants outside Object since there's a new MPLShape for each update
 PI = 3.14159
 ZORDER_INC = 1
+LOG = logging.getLogger(__name__)
 
 # map the ShapeDemo color to the matplotlib color RGB code
 COLOR_MAP = {
@@ -61,17 +68,17 @@ class Shape():
         LOG.info('created self=%s', self)
 
     @classmethod
-    def from_sub_sample(cls, which, limit_xy, data, info, extended):
+    def from_sub_sample_seq(cls, seq, which, limit_xy, data, extended):
         """create flattened Shape attributes from DDS attributes"""
         return cls(
-            seq=info.reception_sequence_number.value,
+            seq=seq,
             which=which,
             limit_xy=limit_xy,
-            color=data['color'],
-            xy=(data['x'], data['y']),
-            size=data['shapesize'],
-            angle=data['angle'] if extended else 0,
-            fill=int(data['fillKind']) if extended else 0
+            color=data.color,
+            xy=(data.x, data.y),
+            size=data.shapesize,
+            angle=data.angle if extended else 0,
+            fill=int(data.fillKind) if extended else 0
         )
 
     @classmethod
@@ -88,16 +95,12 @@ class Shape():
             fill=sample.fillKind if extended else 0
         )
 
-    def update(self, x, y):
-        """change position of existing non-extended shape"""
-        # ignores size/fill changes
-        self.xy = x, self.limit_xy[1] - y
-
-    def update_extended(self, x, y, angle):
+    def update(self, x, y, angle=None):
         """change position of existing shape"""
         # ignores size/fill changes
         self.xy = x, self.limit_xy[1] - y
-        self.angle = angle
+        if angle is not None:
+            self.angle = angle
 
     def mpl2sd(self, center_y):
         """@return the supplied MPL Y value converted to ShapeDemo pixels"""
@@ -144,11 +147,28 @@ class Shape():
             )
         return ret_val
 
+    def get_mpl_points(self):
+        """@Return the adjusted points for use by matplotlib"""
+        if self.which == 'C':
+            return self.xy[0], self.mpl2sd(self.xy[1])
+
+        center_x, center_y = self.xy
+        size = self.size
+        if self.which == 'S':
+            points = [
+                (center_x - size, self.mpl2sd(center_y - size)),
+                (center_x - size, self.mpl2sd(center_y + size)),
+                (center_x + size, self.mpl2sd(center_y + size)),
+                (center_x + size, self.mpl2sd(center_y - size))
+            ]
+        return points
+
     def get_points(self):
         """Given size and center, return vertices; also move to top with zorder"""
-        LOG.debug(f'{self.angle=}')
+        #LOG.debug('angle:%d', self.angle)
         Shape.shared_zorder += ZORDER_INC
         self.zorder = self.shared_zorder
+        LOG.debug('zorder:%d', self.zorder)
         if self.which == 'C':
             return self.xy
 
@@ -175,7 +195,25 @@ class Shape():
             points = self._rotate(points, self.angle * PI / 180)
         return points
 
-    def get_face_and_edge_color(self):
+    @staticmethod
+    def compute_face_and_edge_color_code(fill, color):
+        if fill == 0 or fill is None:
+            fcolor = COLOR_MAP[color] 
+            ecolor = COLOR_MAP['RED'] if color == 'BLUE' else COLOR_MAP['BLUE']
+        elif fill >= 2:
+            # for patterns, edge_color controls the hash lines
+            fcolor, ecolor = COLOR_MAP['WHITE'], COLOR_MAP[color]
+        else:
+            fcolor, ecolor = COLOR_MAP['WHITE'], COLOR_MAP['BLUE']
+        return fcolor, ecolor
+
+    def get_face_and_edge_color_code(self):
+        """policy for edge color depends on face color"""
+        fcolor, ecolor = self.compute_face_and_edge_color_code(self.fill, self.color)
+        LOG.debug('self=%s ecolor=%s fcolor=%s', self, ecolor, fcolor)
+        return fcolor, ecolor
+
+    def get_face_and_edge_color_ori(self):
         """policy for edge color depends on face color"""
         if self.fill == 0:
             fcolor = self.color_code
@@ -203,7 +241,7 @@ class Shape():
     def create_poly(self):
         """create a matplot polygon"""
         poly = self.poly_create_func[self.which]()
-        fcolor, ecolor = self.get_face_and_edge_color()
+        fcolor, ecolor = self.get_face_and_edge_color_code()
         poly.set(ec=ecolor, fc=fcolor,
                  hatch=HATCH_MAP[self.fill], zorder=self.zorder)
         return poly

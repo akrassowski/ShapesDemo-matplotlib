@@ -68,8 +68,8 @@ class ConnextPublisher(Connext):
     def __init__(self, args, config=None):
         super().__init__(args)
         LOG.info('args=%s config=%s', args, config)
-        self.publisher = dds.Publisher(self.sparticipant)
         #writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
+        self.publisher = dds.Publisher(self.participant_with_qos)
         self.pub_dic = {}  # defaults will be keyd by just shape; actual will be shape-color
         self.shape_dic = {}
         self.sample_dic = {}
@@ -113,11 +113,14 @@ class ConnextPublisher(Connext):
             sample.angle = defaults['angle']
         return sample
 
+    def update_shape(self, shape, sample):
+        """helper to wrap extended"""
+        shape.update(sample.x, sample.y, sample.angle if self.args.extended else None)
 
     def publish_sample(self, key):
         """publish a single sample"""
         which, _ = self.key_to_topic_and_color(key)
-        self.sample_counter.update(f'{which}w')
+        self.sample_counter.update([f'{which}w'])
         sample = self.sample_dic.get(which)
         new_sample = sample is None
         if new_sample:
@@ -133,10 +136,12 @@ class ConnextPublisher(Connext):
             self.shape_dic[which] = shape
         else:
             shape = self.shape_dic.get(which)
-            if self.args.extended:
-                shape.update_extended(sample.x, sample.y, sample.angle)
-            else:
-                shape.update(sample.x, sample.y)
+        poly_key = self.form_poly_key(which, shape.color)
+        #if self.sample_counter[f'{which}w'] > 1:
+            #self.mark_unknown(shape, poly_key)
+            #self.mark_gone(shape, poly_key)
+        #else:
+        self.update_shape(shape, sample)
 
         LOG.debug('shape=%s', shape)
         if not new_sample:
@@ -149,9 +154,9 @@ class ConnextPublisher(Connext):
                 # save mod angle
                 sample.angle += self.pub_dic[key]['delta_angle']
             #LOG.debug(f'SET_XY {key=} {xy=} {shape.angle=}')
-        poly_key = self.form_poly_key(which, shape.color)
         poly = self.poly_dic.get(poly_key)
         points = shape.get_points()
+        self.adjust_zorder(500)
 
         self.writer_dic[which].write(sample)  ## publish the sample
         self.sample_dic[which] = sample       ##   and remember it
@@ -164,20 +169,20 @@ class ConnextPublisher(Connext):
                 LOG.warning("justdds: early exit")
                 return
             self.axes.add_patch(poly)
-            test_text = False
-            if test_text:
-                text = "?"
-                txt = self.axes.text(70, 70, text, fontsize=15)
-                self.poly_dic['text1'] = txt
-
         Shape.set_poly_center(poly, which, points)
         # update the plot
         poly.set(lw=self.THIN_EDGE_LINE_WIDTH, zorder=shape.zorder)
 
+    def adjust_zorder(self, limit):
+        for child in self.axes.get_children():
+            if child.zorder > limit:
+                for child2 in self.axes.get_children():
+                    child2.set(zorder=int(child2.zorder/2))
+                Shape.shared_zorder = int(Shape.shared_zorder / 2)
+                break
 
     def draw(self, _):
         """callback for matplotlib to update shapes"""
         for key in self.pub_dic.keys():
             self.publish_sample(key)
-
         return self.poly_dic.values()

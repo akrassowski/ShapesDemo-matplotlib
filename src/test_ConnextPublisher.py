@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
 import logging
 import unittest
@@ -8,8 +8,7 @@ from ConnextPublisher import ConnextPublisher
 from ShapesDemo import DEFAULT_DIC
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-#LOG.setLevel(logging.DEBUG)
+logging.basicConfig(level=logging.CRITICAL)
 
 class Test(unittest.TestCase):
 
@@ -17,7 +16,7 @@ class Test(unittest.TestCase):
         parser = ArgParser(DEFAULT_DIC)
         args = parser.parse_args(["-d", "27", "-pub", "S"])
         parser = ConfigParser(DEFAULT_DIC)
-        parsed_args, is_pub, config = parser.get_config(args) 
+        parsed_args, is_pub, config = parser.get_config(args)
         self.assertTrue(is_pub)
         self.pub = ConnextPublisher(parsed_args, config)
 
