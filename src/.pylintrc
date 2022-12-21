@@ -182,7 +182,7 @@ good-names=dx, dy, i, ix, j,
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted
-good-names-rgxs=
+good-names-rgxs=[tT]est_*
 
 # Include a hint for the correct naming format with invalid-name.
 include-naming-hint=no
@@ -603,7 +603,7 @@ callbacks=cb_,
 
 # A regular expression matching the name of dummy variables (i.e. expected to
 # not be used).
-dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
+dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_|Test
 
 # Argument names that match this expression will be ignored.
 ignored-argument-names=_.*|^ignored_|^unused_
