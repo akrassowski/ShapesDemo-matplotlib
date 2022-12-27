@@ -13,14 +13,15 @@
 
 # python imports
 from abc import ABC, abstractmethod
+from collections import Counter
 import logging
 import os
-from collections import Counter
+import time
+
 # Connext imports
 import rti.connextdds as dds
 #from Shape import Shape
 from ShapeTypeExtended import ShapeType, ShapeTypeExtended
-from MatplotlibWrapper import MatplotlibWrapper
 
 LOG = logging.getLogger(__name__)
 
@@ -33,10 +34,9 @@ class Connext(ABC):
     WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
     GONE = 'gone'
 
-    def __init__(self, args):
+    def __init__(self, matplotlib, args):
         self.args = args
-        self.axes = None
-        self.fig = None
+        self.matplotlib = matplotlib
         self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum
         self.participant = dds.DomainParticipant(args.domain_id)
         self.qos_provider = self.get_qos_provider()
@@ -67,11 +67,6 @@ class Connext(ABC):
                 'T': dds.Topic(self.participant_with_qos, "Triangle", ShapeType)
             }
         self.sample_counter = Counter()
-
-    def start(self, fig, axes):
-        """save the matplotlib params"""
-        self.fig = fig
-        self.axes = axes
 
     @staticmethod
     def form_poly_key(which, color, instance_num=None):
@@ -107,10 +102,15 @@ class Connext(ABC):
             size = int(max_x - min_x)
             return size, (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
 
+    def sleep_as_needed(self):
+        if self.args.nap:
+            time.sleep(self.args.nap)        
+            LOG.info(f'Sleeping {self.args.nap=}')
+
     def _mark2(self, which, edge_color, poly_key, char, clear=False):
         poly = self.poly_dic[poly_key]
         size, x, y = self._get_size_and_center(poly.get_xy())
-        #Shape.compute_face_and_edge_color_code(color)
+        #Shape.face_and_edge_color_code(color)
         fontsize = (size if char == "?" else size*2)
         if which == 'T':
             fontsize = int(fontsize * 0.7)
@@ -124,7 +124,7 @@ class Connext(ABC):
 
     def _mark(self, shape, poly_key, char, clear=False):
         """helper to mark or unmark the state with the passed character"""
-        fc, ec = shape.get_face_and_edge_color_code()
+        fc, ec = shape.face_and_edge_color_code(shape.fill, shape.color)
         x, y = shape.xy
         fontsize = (shape.size if char == "?" else shape.size*2)
         if shape.which == 'T':
@@ -132,7 +132,7 @@ class Connext(ABC):
             y -= shape.size * 0.45
         #weight = 'bold' if char == "?" else 'normal'
         key = poly_key+self.GONE+char
-        text_shape = self.axes.text(
+        text_shape = self.matplotlib.axes.text(
             x, y, " " if clear else char, ha='center', va='center',
             color=ec, fontsize=fontsize, zorder=shape.zorder+1
         )
@@ -146,26 +146,6 @@ class Connext(ABC):
         """mark or unmark the Gone state - a X in center"""
         LOG.info(f'{poly_key=} {self.poly_dic[poly_key].get_xy()=}')
         return self._mark(shape, poly_key, "x", clear)
-
-    def mark_gone_with_lines_untested(self, shape, poly_key, clear=False):
-        """mark or unmark the Gone state - a X in center"""
-        points = shape.get_mpl_points()
-        fc, ec = shape.get_face_and_edge_color_code()
-        print(f'{points=}')
-
-        l1 = MatplotlibWrapper.create_line([(50, 50), (100, 100)], color=ec, zorder=shape.zorder+10)
-        self.axes.add_line(l1)
-        self.poly_dic['myline'] = l1
-        if shape.which == 'S':
-            for index, endpoints in enumerate([(points[0], points[2]), (points[1], points[3])]):
-                if index:
-                    line1 = MatplotlibWrapper.create_line(endpoints, color=ec, zorder=shape.zorder+1)
-                    self.axes.add_line(line1)
-                    self.poly_dic[poly_key+self.GONE+str(index)] = line1
-                else:
-                    line2 = MatplotlibWrapper.create_line(endpoints, color='black', zorder=shape.zorder+1)
-                    self.axes.add_line(line2)
-                    self.poly_dic[poly_key+self.GONE+str(index)] = line2
 
     def is_poly_key_gone(self, poly_key):
         return self.GONE in poly_key
