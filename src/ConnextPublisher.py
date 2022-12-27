@@ -65,15 +65,15 @@ DELIM = ';'
 class ConnextPublisher(Connext):
     """Publish only 1 shape for now"""
 
-    def __init__(self, args, config=None):
-        super().__init__(args)
+    def __init__(self, matplotlib, args, config=None):
+        super().__init__(matplotlib, args)
         LOG.info('args=%s config=%s', args, config)
         #writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
         self.publisher = dds.Publisher(self.participant_with_qos)
         self.pub_dic = {}  # defaults will be keyd by just shape; actual will be shape-color
-        self.shape_dic = {}
-        self.sample_dic = {}
-        self.writer_dic = {}
+        self.shape_dic = {}  # which: Shape
+        self.sample_dic = {}  # which-color: latest-published-sample
+        self.writer_dic = {}  # which: dataWriter
         self.pub_key_count = 1
         if config:
             for key in config.keys():
@@ -83,11 +83,6 @@ class ConnextPublisher(Connext):
                 self.writer_dic[key] = dds.DataWriter(self.publisher, self.stopic_dic[key])
             self.pub_dic = config
         LOG.info('ConnextPublisher starting: pub_dic=%s', self.pub_dic)
-
-
-    def start(self, fig, axes):
-        """First, some globals and helpers"""
-        super().start(fig, axes)
 
     @staticmethod
     def key_to_topic_and_color(text):
@@ -120,31 +115,27 @@ class ConnextPublisher(Connext):
     def publish_sample(self, key):
         """publish a single sample"""
         which, _ = self.key_to_topic_and_color(key)
-        self.sample_counter.update([f'{which}w'])
-        sample = self.sample_dic.get(which)
-        new_sample = sample is None
-        if new_sample:
+        self.sample_counter.update([f'{key}w'])
+        sample = self.sample_dic.get(key)
+        is_new_sample = sample is None
+        if is_new_sample:
             sample = self.create_default_sample(key)
             LOG.debug('NEW sample=%s', sample)
 
             shape = Shape.from_pub_sample(
+                matplotlib=self.matplotlib,
                 which=which,
-                limit_xy=self.args.graph_xy,
                 sample=sample,
                 extended=self.args.extended
             )
             self.shape_dic[which] = shape
         else:
-            shape = self.shape_dic.get(which)
+            shape = self.shape_dic[which]
         poly_key = self.form_poly_key(which, shape.color)
-        #if self.sample_counter[f'{which}w'] > 1:
-            #self.mark_unknown(shape, poly_key)
-            #self.mark_gone(shape, poly_key)
-        #else:
         self.update_shape(shape, sample)
 
         LOG.debug('shape=%s', shape)
-        if not new_sample:
+        if not is_new_sample:
             LOG.debug('PUBDIC: pub_dic[key]=%s', self.pub_dic[key])
             xy, delta_xy = shape.reverse_if_wall(self.pub_dic[key]['delta_xy'])
             sample.x, sample.y = xy[0], shape.mpl2sd(xy[1])
@@ -159,8 +150,8 @@ class ConnextPublisher(Connext):
         self.adjust_zorder(500)
 
         self.writer_dic[which].write(sample)  ## publish the sample
-        self.sample_dic[which] = sample       ##   and remember it
-        LOG.debug('sample:%s', self.sample_dic[which])
+        self.sample_dic[key] = sample       ##   and remember it
+        LOG.debug('sample:%s', self.sample_dic[key])
         if not poly:
             poly = shape.create_poly()
             self.poly_dic[poly_key] = poly
@@ -168,15 +159,15 @@ class ConnextPublisher(Connext):
             if self.args.justdds:
                 LOG.warning("justdds: early exit")
                 return
-            self.axes.add_patch(poly)
-        Shape.set_poly_center(poly, which, points)
+            self.matplotlib.axes.add_patch(poly)
+        shape.set_poly_center(poly, which, points)
         # update the plot
         poly.set(lw=self.THIN_EDGE_LINE_WIDTH, zorder=shape.zorder)
 
     def adjust_zorder(self, limit):
-        for child in self.axes.get_children():
+        for child in self.matplotlib.axes.get_children():
             if child.zorder > limit:
-                for child2 in self.axes.get_children():
+                for child2 in self.matplotlib.axes.get_children():
                     child2.set(zorder=int(child2.zorder/2))
                 Shape.shared_zorder = int(Shape.shared_zorder / 2)
                 break
@@ -185,4 +176,5 @@ class ConnextPublisher(Connext):
         """callback for matplotlib to update shapes"""
         for key in self.pub_dic.keys():
             self.publish_sample(key)
+            self.sleep_as_needed()
         return self.poly_dic.values()
