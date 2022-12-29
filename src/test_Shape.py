@@ -1,32 +1,33 @@
 #!/usr/bin/env python
 """Tests for Shape"""
 import unittest
+from unittest.mock import MagicMock
 from Shape import Shape, COLOR_MAP
 
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring, too-many-public-methods
 class Test(unittest.TestCase):
     """Tests for Shape"""
 
     def setUp(self):
+        matplotlib = MagicMock()  # only mock the values that matter
+        matplotlib.axes.get_xlim.return_value = (0, 240)
+        matplotlib.axes.get_ylim.return_value = (0, 270)
 
         self.circle = Shape(
-            seq=71, which="C",
-            limit_xy=(240, 270),
+            matplotlib=matplotlib, seq=71, which="C",
             color="GREEN",
-            xy=(33,33), size=33,
+            xy=(33, 33), size=33,
             angle=45, fill=0
         )
         self.square = Shape(
-            seq=72, which="S",
-            limit_xy=(240, 270),
+            matplotlib=matplotlib, seq=72, which="S",
             color="RED",
-            xy=(30,30), size=30,
+            xy=(30, 30), size=30,
         )
         self.triangle = Shape(
-            seq=73, which="T",
-            limit_xy=(240, 270),
+            matplotlib=matplotlib, seq=73, which="T",
             color="YELLOW",
-            xy=(30,30), size=30,
+            xy=(30, 30), size=30,
         )
         self.limit_y = self.circle.limit_xy[1]
 
@@ -142,47 +143,52 @@ class Test(unittest.TestCase):
 
         self.assertEqual(sorted(start), sorted(end))
 
-    def test_mpl2sd_0(self):
-        sd = self.square.mpl2sd(0)
-        self.assertEqual(sd, self.square.limit_xy[1])
-
-    def test_mpl2sd_10(self):
-        result = self.square.mpl2sd(10)
-        self.assertEqual(result, 260)
-
     def test_get_points_circle(self):
         self.circle.xy = 5, 5
         points = self.circle.get_points()
         self.assertEqual(points, (5, 5))
 
     def test_example_colors(self):
-        fcolor, ecolor = self.circle.get_face_and_edge_color_code()
+        fcolor, ecolor = self.circle.face_and_edge_color_code(self.circle.fill, self.circle.color)
         self.assertEqual(fcolor, COLOR_MAP['GREEN'])
         self.assertEqual(ecolor, COLOR_MAP['BLUE'])
-        fcolor, ecolor = self.square.get_face_and_edge_color_code()
+        fcolor, ecolor = self.square.face_and_edge_color_code(self.square.fill, self.square.color)
         self.assertEqual(fcolor, COLOR_MAP['RED'])
         self.assertEqual(ecolor, COLOR_MAP['BLUE'])
-        fcolor, ecolor = self.triangle.get_face_and_edge_color_code()
+        fcolor, ecolor = self.triangle.face_and_edge_color_code(
+            self.triangle.fill,
+            self.triangle.color
+        )
         self.assertEqual(fcolor, COLOR_MAP['YELLOW'])
         self.assertEqual(ecolor, COLOR_MAP['BLUE'])
 
 
-    def test_colors(self):
-        square = Shape(777, 'S', [100, 100], 'BLUE', [50, 50], 30)
-        fcolor, ecolor = square.get_face_and_edge_color_code()
+    def test_color_fill0_blue(self):
+        fcolor, ecolor = Shape.face_and_edge_color_code(0, 'BLUE')
         self.assertEqual(fcolor, COLOR_MAP['BLUE'])
         self.assertEqual(ecolor, COLOR_MAP['RED'])
 
+    def test_color_fill1_blue(self):
+        fcolor, ecolor = Shape.face_and_edge_color_code(1, 'BLUE')
+        self.assertEqual(fcolor, COLOR_MAP['WHITE'])
+        self.assertEqual(ecolor, COLOR_MAP['BLUE'])
+
+    def test_color_fill2_blue(self):
+        fcolor, ecolor = Shape.face_and_edge_color_code(2, 'BLUE')
+        self.assertEqual(fcolor, COLOR_MAP['WHITE'])
+        self.assertEqual(ecolor, COLOR_MAP['BLUE'])
+
     def test_color_compute_blue(self):
-        fcolor, ecolor = Shape.compute_face_and_edge_color_code(0, 'BLUE')
+        fcolor, ecolor = Shape.face_and_edge_color_code(0, 'BLUE')
         self.assertEqual(fcolor, COLOR_MAP['BLUE'])
         self.assertEqual(ecolor, COLOR_MAP['RED'])
 
     def test_color_compute_green(self):
-        fcolor, ecolor = Shape.compute_face_and_edge_color_code(0, 'GREEN')
+        fcolor, ecolor = Shape.face_and_edge_color_code(0, 'GREEN')
         self.assertEqual(fcolor, COLOR_MAP['GREEN'])
         self.assertEqual(ecolor, COLOR_MAP['BLUE'])
 
 
 if __name__ == '__main__':
     unittest.main()
+    Test()

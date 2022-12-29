@@ -2,24 +2,20 @@
 
 """Testing of the ConnextSubscriber module"""
 import unittest
+from unittest.mock import MagicMock
+
 from ConnextSubscriber import ConnextSubscriber
 # pylint: disable=missing-function-docstring
 
 class Test(unittest.TestCase):
     """Testing of the ConnextSubscriber module"""
 
-    def setup(self):
-        self.sub = ConnextSubscriber(args)
+    def setUp(self):
+        self.sub = ConnextSubscriber(MagicMock(), MagicMock(), MagicMock())
 
-    def test_creat_default_sample(self):
-        a = 'some'
-        b = 'some'
-        self.assertEqual(a, b)
-
-    def test_boolean(self):
-        a = True
-        b = True
-        self.assertEqual(a, b)
+    def silly(self):
+        self.assertIsNotNone(self.sub)
 
 if __name__ == '__main__':
     unittest.main()
+    Test()

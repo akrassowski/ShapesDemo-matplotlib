@@ -29,11 +29,12 @@ class ShapeListener(dds.NoOpDataReaderListener):
         dds.StatusMask.REQUESTED_INCOMPATIBLE_QOS |
         dds.StatusMask.SUBSCRIPTION_MATCHED |
         dds.StatusMask.LIVELINESS_LOST |
-        dds.StatusMask.LIVELINESS_CHANGED 
+        dds.StatusMask.LIVELINESS_CHANGED
     )
 
     listener_called = False  # TODO test me
 
+    # pylint: disable=line-too-long, unused-argument
     def on_requested_deadline_missed(self, reader: dds.DataReader, status: dds.RequestedDeadlineMissedStatus):
         LOG.warning("Deadline missed")
 

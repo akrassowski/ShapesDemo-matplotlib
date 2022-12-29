@@ -8,25 +8,21 @@
 # This code contains trade secrets of Real-Time Innovations, Inc.             #
 ###############################################################################
 
-"""Implements multiplotlib shape class (MPLShape)"""
+"""Implements multiplotlib shape class"""
 """Interface to App for all things shapey
-   Shape -> 
-     color, (x, y), size, fill, angle
-     polygon_list (self, gone)
-     plot - axes, patches_list
+   Shape is responsible for:
+     ShapeDemo attributes: color, (x, y), size, fill, angle
+     Polygon attributes: poly_list to hold self, gone
+     matplotlib env - fig, axes, patches_list
      publisher - delta_xy, delta_angle
-     subscriber - history sibling refs
+     subscriber - pub_handle
+     NOT responsible for the history-depth refs, see ConnextSubscriber for that
 """
 
 # python imports
+from collections import defaultdict
 import logging
 import math
-
-# animation imports
-from matplotlib.patches import Circle, Polygon
-
-#from ShapeTypeExtended import ShapeType, ShapeTypeExtended
-
 
 # Constants outside Object since there's a new MPLShape for each update
 PI = 3.14159
@@ -35,7 +31,7 @@ LOG = logging.getLogger(__name__)
 
 # map the ShapeDemo color to the matplotlib color RGB code
 COLOR_MAP = {
-    'BLACK': 'k', 'WHITE': 'w',
+    'BLACK': 'k', 'WHITE': 'w', 'GREY': '#bebebe', 'GREYx': 'grey',
     'PURPLE': '#c03bff', 'BLUE': '#0632ff', 'RED': '#ff2600', 'GREEN': '#00fa00',
     'YELLOW': '#fffb00', 'CYAN': '#00fdff', 'MAGENTA': '#ff41ff', 'ORANGE': '#ff9500'
 }
@@ -43,56 +39,59 @@ HATCH_MAP = {0: None, 1: None, 2: "--", 3: "||"}
 
 class Shape():
     """holds shape attributes and helpers"""
-    shared_zorder = 10
+    shared_zorder = 10  # keep zorder at Shape-level and for each instance
+    matplotlib = None
+    limit_xy = None
+    poly_create_func_dic = None
 
-    def __init__(self, seq, which, limit_xy, color, xy, size, angle=None, fill=None):
+    def __init__(self, matplotlib, seq, which, color, xy, size, angle=None, fill=None):
         """generic constructor"""
+        self.zorder = self.shared_zorder + ZORDER_INC
+        self.matplotlib = matplotlib
+        if self.limit_xy is None:
+            self.limit_xy = int(matplotlib.axes.get_xlim()[1]), int(matplotlib.axes.get_ylim()[1])
+        if self.poly_create_func_dic is None:
+            self.poly_create_func_dic = {
+                'C': self.create_circle,
+                'S': self.create_square,
+                'T': self.create_triangle
+            }
         self.seq = seq
+        assert which in 'CST', f'shape must be one of CST not {which}'
         self.which = which
-        if which not in 'CST':
-            raise ValueError(f'shape must be one of CST not {which}')
-        self.limit_xy = limit_xy
         self.color = color
-        self.zorder = ZORDER_INC
-        self.poly_create_func = {
-            'C': self.create_circle,
-            'S': self.create_square,
-            'T': self.create_triangle
-        }
-        # now init the MPL Shape params
-        self.color_code = COLOR_MAP[self.color]
-        self.xy = xy[0], limit_xy[1] - xy[1]
+        self.poly_list = defaultdict(list)
+        # now init the Shape params
+        self.color_code = COLOR_MAP[color]
+        self.xy = xy[0], self.limit_xy[1] - xy[1]
         self.size = int(round(size / 2))  ## RTI ShapesDemo: top-to-bottom, MPL: radius
-        self.angle = angle
-        self.fill = fill
+        self.angle, self.fill = angle, fill
         LOG.info('created self=%s', self)
 
     @classmethod
-    def from_sub_sample_seq(cls, seq, which, limit_xy, data, extended):
+    def from_sub_sample_seq(cls, matplotlib, seq, which, data, extended):
         """create flattened Shape attributes from DDS attributes"""
         return cls(
-            seq=seq,
+            matplotlib=matplotlib, seq=seq,
             which=which,
-            limit_xy=limit_xy,
             color=data.color,
             xy=(data.x, data.y),
             size=data.shapesize,
-            angle=data.angle if extended else 0,
-            fill=int(data.fillKind) if extended else 0
+            angle=data.angle if extended else None,
+            fill=int(data.fillKind) if extended else None
         )
 
     @classmethod
-    def from_pub_sample(cls, which, limit_xy, sample, extended):
+    def from_pub_sample(cls, matplotlib, which, sample, extended):
         """create from a publisher sample"""
         return cls(
-            seq=42,
+            matplotlib=matplotlib, seq=42,
             which=which,
-            limit_xy=limit_xy,
             color=sample.color,
             xy=(sample.x, sample.y),
             size=sample.shapesize,
-            angle=sample.angle if extended else 0,
-            fill=sample.fillKind if extended else 0
+            angle=sample.angle if extended else None,
+            fill=sample.fillKind if extended else None
         )
 
     def update(self, x, y, angle=None):
@@ -101,10 +100,6 @@ class Shape():
         self.xy = x, self.limit_xy[1] - y
         if angle is not None:
             self.angle = angle
-
-    def mpl2sd(self, center_y):
-        """@return the supplied MPL Y value converted to ShapeDemo pixels"""
-        return self.limit_xy[1] - center_y
 
     def get_sequence_number(self):
         """getter for sequence number"""
@@ -130,7 +125,7 @@ class Shape():
         elif which in 'ST':
             poly.set_xy(xy)
         else:
-            raise ValueError(f'Invalid shape: {which}')
+            assert False, f'Invalid shape: {which}'
         return poly
 
     def _rotate(self, points, radians):
@@ -150,16 +145,17 @@ class Shape():
     def get_mpl_points(self):
         """@Return the adjusted points for use by matplotlib"""
         if self.which == 'C':
-            return self.xy[0], self.mpl2sd(self.xy[1])
+            #return self.xy[0], self.mpl2sd(self.xy[1])
+            return self.xy[0], self.matplotlib.flip_y(self.xy[1])
 
         center_x, center_y = self.xy
         size = self.size
         if self.which == 'S':
             points = [
-                (center_x - size, self.mpl2sd(center_y - size)),
-                (center_x - size, self.mpl2sd(center_y + size)),
-                (center_x + size, self.mpl2sd(center_y + size)),
-                (center_x + size, self.mpl2sd(center_y - size))
+                (center_x - size, self.matplotlib.flip_y(center_y - size)),
+                (center_x - size, self.matplotlib.flip_y(center_y + size)),
+                (center_x + size, self.matplotlib.flip_y(center_y + size)),
+                (center_x + size, self.matplotlib.flip_y(center_y - size))
             ]
         return points
 
@@ -188,62 +184,43 @@ class Shape():
                 (center_x + size, center_y - size)
             ]
         else:
-            raise ValueError(f'Shape type {self.which} not one of: CST')
+            assert False, f'Shape type {self.which} not one of: CST'
 
-        if self.angle:
+        if self.angle is not None:
             #LOG.info(f'ROTATING: {self.angle=}')
             points = self._rotate(points, self.angle * PI / 180)
         return points
 
     @staticmethod
-    def compute_face_and_edge_color_code(fill, color):
-        if fill == 0 or fill is None:
-            fcolor = COLOR_MAP[color] 
-            ecolor = COLOR_MAP['RED'] if color == 'BLUE' else COLOR_MAP['BLUE']
-        elif fill >= 2:
-            # for patterns, edge_color controls the hash lines
-            fcolor, ecolor = COLOR_MAP['WHITE'], COLOR_MAP[color]
+    def face_and_edge_color_code(fill, color):
+        if fill:
+            fcolor = COLOR_MAP['WHITE']
+            ecolor = COLOR_MAP[color]
         else:
-            fcolor, ecolor = COLOR_MAP['WHITE'], COLOR_MAP['BLUE']
-        return fcolor, ecolor
-
-    def get_face_and_edge_color_code(self):
-        """policy for edge color depends on face color"""
-        fcolor, ecolor = self.compute_face_and_edge_color_code(self.fill, self.color)
-        LOG.debug('self=%s ecolor=%s fcolor=%s', self, ecolor, fcolor)
-        return fcolor, ecolor
-
-    def get_face_and_edge_color_ori(self):
-        """policy for edge color depends on face color"""
-        if self.fill == 0:
-            fcolor = self.color_code
-            ecolor = COLOR_MAP['RED'] if self.color == 'BLUE' else COLOR_MAP['BLUE']
-        elif self.fill >= 2:
-            # for patterns, edge_color controls the hash lines
-            fcolor, ecolor = COLOR_MAP['WHITE'], self.color_code
-        else:  # transparent
-            fcolor, ecolor = COLOR_MAP['WHITE'], COLOR_MAP['BLUE']
-        LOG.debug('self=%s ecolor=%s fcolor=%s', self, ecolor, fcolor)
+            fcolor = COLOR_MAP[color]
+            ecolor = COLOR_MAP['RED'] if color == 'BLUE' else COLOR_MAP['BLUE']
         return fcolor, ecolor
 
     def create_circle(self):
         """return a circle """
-        return Circle(self.xy, radius=self.size)
+        return self.matplotlib.create_circle(self.xy, radius=self.size)
 
     def create_square(self):
         """return a square, avoid Rectangle whose coords are diff from Triangle"""
-        return Polygon(self.get_points(), 4)
+        return self.matplotlib.create_square(self.get_points())
 
     def create_triangle(self):
         """return a triangle from the Polygon"""
-        return Polygon(self.get_points(), 3)
+        return self.matplotlib.create_triangle(self.get_points())
 
     def create_poly(self):
         """create a matplot polygon"""
-        poly = self.poly_create_func[self.which]()
-        fcolor, ecolor = self.get_face_and_edge_color_code()
-        poly.set(ec=ecolor, fc=fcolor,
-                 hatch=HATCH_MAP[self.fill], zorder=self.zorder)
+        poly = self.poly_create_func_dic[self.which]()
+        fcolor, ecolor = self.face_and_edge_color_code(self.fill, self.color)
+        hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
+        LOG.info(f'{ecolor=} {fcolor=} {self.zorder=} {hatch=}')
+        poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder)
+        #self.poly_list.append(poly)
         return poly
 
     def __repr__(self):

@@ -20,7 +20,7 @@ import rti.connextdds as dds
 
 from Connext import Connext
 from InstanceGen import InstanceGen
-from Shape import Shape
+from Shape import Shape, COLOR_MAP
 from ShapeListener import ShapeListener
 
 LOG = logging.getLogger(__name__)
@@ -38,24 +38,40 @@ class ConnextSubscriber(Connext):
         self.handles_set = set()
         self.subscriber = dds.Subscriber(self.participant_with_qos)
         reader_qos = self.qos_provider.datareader_qos
-        LOG.info('config=%s', config)
-        #topic = dds.Topic(self.participant, 'Square', ShapeTypeExtended)
 
         listener = ShapeListener()
         status_mask = listener.get_mask()
-        for which in 'S':  #config.keys():
+        for which in config.keys():
             LOG.info(f'Subscribing to {which=} {config[which]=}')
-            if 1==2:  # TODO fix me
-                self.reader_dic[which] = dds.DynamicData.DataReader(
-                    self.subscriber, self.topic_dic[which], reader_qos)
-            else:
-                self.reader_dic[which] = dds.DataReader(
-                    self.subscriber,
-                    self.stopic_dic[which],
-                    reader_qos,
-                    listener,
-                    status_mask
-                )
+            topic = self.init_get_topic(which, config)
+            self.reader_dic[which] = dds.DataReader(
+                self.subscriber,
+                topic,
+                reader_qos,
+                listener,
+                status_mask
+            )
+
+    def init_get_topic(self, which, config):
+        """get a Content Filtered or normal Topic"""
+        topic = self.stopic_dic[which]
+        cfxy = config[which].get('content_filter')
+        if cfxy:
+            expr = "x >= %0 AND y >= %1 AND x <= %2 and y <= %3"
+            params = [str(n) for sublist in cfxy for n in sublist]
+            topic = dds.ContentFilteredTopic(topic, f"CFT-{which}", dds.Filter(expr, params))
+            anchor = (
+                min(cfxy[0][0], cfxy[1][0]),
+                min(self.matplotlib.flip_y(cfxy[0][1]), self.matplotlib.flip_y(cfxy[1][1]))
+            )
+            width, height = abs(cfxy[0][0] - cfxy[1][0]), abs(cfxy[0][1] - cfxy[1][1])
+            LOG.debug(f'filtering for {expr=} {params=} {anchor=} {height=} {width=}')
+
+            ec_, fc_ = COLOR_MAP['BLACK'], COLOR_MAP['GREY']
+            self.matplotlib.axes.add_patch(
+                self.matplotlib.create_rectangle(anchor, height, width, fc_, ec_, zorder=10)
+            )
+        return topic
 
     def get_max_samples_per_instance(self, which):
         """ helper to fetch depth from a reader"""
@@ -140,7 +156,6 @@ class ConnextSubscriber(Connext):
                 continue
             for gone_key in gone_keys:
                 if gone_key in poly_key:
-                    _, color, _ = self.crack_poly_key(poly_key)
                     shape = self.shape_dic[gone_key]
                     key, gone = self.mark_gone(shape, poly_key)
                     new_gones[key] = gone
@@ -164,24 +179,12 @@ class ConnextSubscriber(Connext):
                 LOG.info(f'ALIVE {handle=}')
         self.handles_set -= missing_handle_set
 
-    @staticmethod
-    def print_guids(info):
-        def guid2str(guid):
-            return '.'.join([ str(guid[x]) for x in range(16)])
-
-        print(f'{guid2str(info.original_publication_virtual_guid)=}')
-        print(f'{guid2str(info.related_original_publication_virtual_guid)=}')
-        print(f'{guid2str(info.related_source_guid)=}')
-        print(f'{guid2str(info.source_guid)=}')
-        #print(f'{info.publication_handle=}')
-
     def handle_samples(self, reader, which):
         """get samples and handle each"""
 
         LOG.debug('START cntr: %d', self.sample_counter)
         for data, info in reader.take():
             if info.valid:
-                #self.print_guids(info)
                 LOG.info('sample:%s', data)
                 self.handle_one_sample(
                     which,

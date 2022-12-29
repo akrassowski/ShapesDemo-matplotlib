@@ -92,6 +92,7 @@ class ConnextPublisher(Connext):
 
     @staticmethod
     def form_pub_key(normalized_shape, normalized_color):
+        """format and return a publisher key"""
         return f'{normalized_shape}{DELIM}{normalized_color}'
 
     def create_default_sample(self, which):
@@ -138,7 +139,7 @@ class ConnextPublisher(Connext):
         if not is_new_sample:
             LOG.debug('PUBDIC: pub_dic[key]=%s', self.pub_dic[key])
             xy, delta_xy = shape.reverse_if_wall(self.pub_dic[key]['delta_xy'])
-            sample.x, sample.y = xy[0], shape.mpl2sd(xy[1])
+            sample.x, sample.y = xy[0], self.matplotlib.flip_y(xy[1])
             # save the modified direction
             self.pub_dic[key]['delta_xy'] = delta_xy
             if self.args.extended:
@@ -149,6 +150,7 @@ class ConnextPublisher(Connext):
         points = shape.get_points()
         self.adjust_zorder(500)
 
+        print(f'{sample=} {type(sample)=}')
         self.writer_dic[which].write(sample)  ## publish the sample
         self.sample_dic[key] = sample       ##   and remember it
         LOG.debug('sample:%s', self.sample_dic[key])
@@ -165,10 +167,12 @@ class ConnextPublisher(Connext):
         poly.set(lw=self.THIN_EDGE_LINE_WIDTH, zorder=shape.zorder)
 
     def adjust_zorder(self, limit):
+        """Periodically, reset the zorder to prevent runaway growth"""
         for child in self.matplotlib.axes.get_children():
             if child.zorder > limit:
                 for child2 in self.matplotlib.axes.get_children():
-                    child2.set(zorder=int(child2.zorder/2))
+                    if child2.zorder > 10:  # skip base zorder items
+                        child2.set(zorder=int(child2.zorder/2))
                 Shape.shared_zorder = int(Shape.shared_zorder / 2)
                 break
 

@@ -127,6 +127,11 @@ class ConfigParser:
         return txt[0:4] == 'FILL'
 
     @staticmethod
+    def is_content_filter(txt):
+        """@return True iff content filter is specified"""
+        return 'FILTER' in txt.upper()
+
+    @staticmethod
     def normalize_fill(txt):  # TODO use ShapeTypeExtended intEnum
         """@return the normalized fill attribute or throw"""
         normalized = None
@@ -200,6 +205,7 @@ class ConfigParser:
         """parsing user-entered config data, so tolerate mixed case"""
         # Validate the keys but let the values flow to the dic consumer
         def _dict_decorate(ordered_pairs):
+            """flatten dups by appending count"""
             dic, count = {}, 1
             for key, value in ordered_pairs:
                 if key in dic:
@@ -212,7 +218,7 @@ class ConfigParser:
         if not stream_or_fname:
             return
         if isinstance(stream_or_fname, str):
-            with open(stream_or_fname, 'r') as cfg_file:
+            with open(stream_or_fname, 'r', encoding='utf8') as cfg_file:
                 cfg_dic = json.load(cfg_file, object_pairs_hook=_dict_decorate)
         elif isinstance(stream_or_fname, StringIO):
             cfg_dic = json.loads(stream_or_fname.getvalue(), object_pairs_hook=_dict_decorate)
@@ -220,23 +226,27 @@ class ConfigParser:
             raise ValueError(
                 self.err_msg_('param', 'must be StringIO or str', type(stream_or_fname)))
         for key in cfg_dic.keys():
-            if "PUB" in key.upper():
+            key_upper = key.upper()
+            if "PUB" in key_upper:
                 self.parse_pub(cfg_dic[key], key)
-            elif "SUB" in key.upper():
+            elif "SUB" in key_upper:
                 self.parse_sub(cfg_dic[key], key)
 
     def parse_sub(self, cfg, entity_name):
         """parse the sub dictionary"""
-        LOG.debug('cfg:%s entity_name:%s', cfg, entity_name)
+        LOG.info('cfg:%s entity_name:%s', cfg, entity_name)
         for shape in cfg.keys():
             n_shape = self.normalize_shape(shape)
             self.sub_dic[n_shape] = self.sub_dic_default
+            for attr in cfg[shape].keys():
+                value = cfg[shape][attr]
+                if self.is_content_filter(attr):
+                    self.sub_dic[n_shape]['content_filter'] = value
         LOG.debug('sub_dic: %s', self.sub_dic)
-
 
     def fixup_unknown(self, shape, color):
         """helper - now that color is known, replace UNKNOWN with color"""
-        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'fillKind', 'shapesize']
+        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'fillKind', 'shapesize']  # pub attrs
         key_unknown = ConnextPublisher.form_pub_key(shape, 'UNKNOWN')
         key_known = ConnextPublisher.form_pub_key(shape, color)
         new_dic = {}
@@ -256,7 +266,7 @@ class ConfigParser:
 
     def parse_pub(self, cfg, entity_name):
         """parse the pub dictionary"""
-        #LOG.info(f'pub {cfg=} {cfg.keys()=}')
+        LOG.debug(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
         #print(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
 
         if len(cfg.keys()) > 1:

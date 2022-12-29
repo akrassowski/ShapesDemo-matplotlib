@@ -14,7 +14,7 @@ from ConnextPublisher import ConnextPublisher
 #LOG = logging.getLogger(__name__)
 #logging.basicConfig(level=logging.DEBUG)
 
-TRIANGLE_CONFIG_FILENAME = 'pub_t.cfg'
+TRIANGLE_CONFIG_FILENAME = 'test_pub_t.cfg'
 
 # pylint: disable=missing-function-docstring
 class Test(unittest.TestCase):
@@ -206,16 +206,18 @@ class Test(unittest.TestCase):
         self.assertEqual(len(default), len(help_text))
 
     def test_get_pub_config(self):
-        self.parser.parse('pub_t.cfg')
+        self.parser.parse(TRIANGLE_CONFIG_FILENAME)
         pub_cfg = self.parser.get_pub_config()
         self.assertEqual(pub_cfg['T;RED']['color'], 'RED')
 
     def test_get_sub_config(self):
-        self.parser.parse('sub_cs.cfg')
+        config = """{"sub": { "circle": {}, "square": {}}}"""
+        self.parser.parse(StringIO(config))
         sub_cfg = self.parser.get_sub_config()
-        #print(sub_cfg)
         self.assertIsNotNone(sub_cfg.get('C'))
-        self.assertIsNotNone(sub_cfg.get('S'))
+        square_config = sub_cfg.get('S')
+        self.assertIsNotNone(square_config)
+        self.assertTrue('content_filter' in square_config)
         self.assertIsNone(sub_cfg.get('T'))
 
     def test_get_pub_config_defaults(self):
@@ -265,3 +267,6 @@ class Test_normalize_xy(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    Test()
+    Test_normalize_shape()
+    Test_normalize_xy()
