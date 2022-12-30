@@ -32,6 +32,7 @@ except ImportError as exc:
 
 # space between panels
 HORIZONTAL_GAP, VERTICAL_GAP = 30, 85
+ZORDER_BASE, ZORDER_INC = 10, 1
 
 class Matplotlib:
     """Wrapper to create a graphing environment using the matplotlib library"""
@@ -62,7 +63,7 @@ class Matplotlib:
 
         self.init_set_position(args.position)
         self.init_show_image(image_filename)
-    
+
     def init_set_position(self, position):
         mngr = plt.get_current_fig_manager()
         x, y, dx, dy = mngr.window.geometry().getRect()
@@ -87,11 +88,11 @@ class Matplotlib:
             image = plt.imread(image_filename)
             imagebox = OffsetImage(image, zoom=0.3, alpha=0.15)
             imagebox.image.axes = self.axes
-            ab = AnnotationBbox(imagebox, (0.5, 0.5), xycoords='axes fraction', bboxprops={'lw':0})
-            self.axes.add_artist(ab)
+            abox = AnnotationBbox(imagebox, (0.5, 0.5), xycoords='axes fraction', bboxprops={'lw':0})
+            self.axes.add_artist(abox)
 
     def flip_y(self, y):
-        """flip y coordinate to swich from SD to MPL""" 
+        """flip y coordinate to swich from SD to MPL"""
         return int(self.axes.get_ylim()[1] - y)
 
     def create_circle(self, center_xy, radius):
@@ -107,17 +108,10 @@ class Matplotlib:
         return Polygon(points, 3)
 
     @staticmethod
-    def create_rectanglep(points, fc, ec, zorder=10):
-        """return a rectangle, avoid Rectangle"""
-        poly = Polygon(points, 4)
-        poly.set(ec=ec, fc=fc, zorder=zorder)
-        return poly
-
-    @staticmethod
-    def create_rectangle(anchor, height, width, fc, ec, zorder=10):
-        """return a rectangle"""
-        poly = Rectangle(xy=anchor, height=height, width=width)
-        poly.set(ec=ec, fc=fc, zorder=zorder)
+    def create_rectangle(anchor, extents, colors, zorder=ZORDER_BASE):
+        """return a rectangle from extents (height, width) and colors (edge, face)"""
+        poly = Rectangle(xy=anchor, height=extents[0], width=extents[1])
+        poly.set(ec=colors[0], fc=colors[1], zorder=zorder)
         return poly
 
     @staticmethod

@@ -23,10 +23,10 @@
 from collections import defaultdict
 import logging
 import math
+from Matplotlib import ZORDER_BASE, ZORDER_INC
 
 # Constants outside Object since there's a new MPLShape for each update
 PI = 3.14159
-ZORDER_INC = 1
 LOG = logging.getLogger(__name__)
 
 # map the ShapeDemo color to the matplotlib color RGB code
@@ -39,37 +39,33 @@ HATCH_MAP = {0: None, 1: None, 2: "--", 3: "||"}
 
 class Shape():
     """holds shape attributes and helpers"""
-    shared_zorder = 10  # keep zorder at Shape-level and for each instance
-    matplotlib = None
-    limit_xy = None
-    poly_create_func_dic = None
+    shared_zorder = ZORDER_BASE  # keep zorder at Shape-level and for each instance
+    limit_xy, matplotlib, poly_create_func_dic = None, None, None
+    init_once = False
 
     def __init__(self, matplotlib, seq, which, color, xy, size, angle=None, fill=None):
         """generic constructor"""
+        assert which in 'CST', f'shape must be one of CST not {which}'
         self.zorder = self.shared_zorder + ZORDER_INC
-        self.matplotlib = matplotlib
-        if self.limit_xy is None:
+        if not self.init_once:
+            self.matplotlib = matplotlib
             self.limit_xy = int(matplotlib.axes.get_xlim()[1]), int(matplotlib.axes.get_ylim()[1])
-        if self.poly_create_func_dic is None:
             self.poly_create_func_dic = {
-                'C': self.create_circle,
-                'S': self.create_square,
-                'T': self.create_triangle
+                'C': self.create_circle, 'S': self.create_square, 'T': self.create_triangle
             }
         self.seq = seq
-        assert which in 'CST', f'shape must be one of CST not {which}'
-        self.which = which
-        self.color = color
+        self.color, self.which = color, which
         self.poly_list = defaultdict(list)
         # now init the Shape params
         self.color_code = COLOR_MAP[color]
         self.xy = xy[0], self.limit_xy[1] - xy[1]
+        #self.xy = xy[0], self.matplotlib.flip_y(xy[1])  # use flip consistently? breaks tests
         self.size = int(round(size / 2))  ## RTI ShapesDemo: top-to-bottom, MPL: radius
         self.angle, self.fill = angle, fill
         LOG.info('created self=%s', self)
 
     @classmethod
-    def from_sub_sample_seq(cls, matplotlib, seq, which, data, extended):
+    def from_sub_sample(cls, matplotlib, seq, which, data, extended):
         """create flattened Shape attributes from DDS attributes"""
         return cls(
             matplotlib=matplotlib, seq=seq,
@@ -100,6 +96,9 @@ class Shape():
         self.xy = x, self.limit_xy[1] - y
         if angle is not None:
             self.angle = angle
+        Shape.shared_zorder += ZORDER_INC
+        self.zorder = self.shared_zorder
+        LOG.debug('zorder:%d', self.zorder)
 
     def get_sequence_number(self):
         """getter for sequence number"""
@@ -120,12 +119,11 @@ class Shape():
     @staticmethod
     def set_poly_center(poly, which, xy):
         """helper to set the poly's centerpoint"""
+        assert which in 'CST', f'Invalid shape: {which}'
         if which == 'C':
             poly.set(center=xy)
         elif which in 'ST':
             poly.set_xy(xy)
-        else:
-            assert False, f'Invalid shape: {which}'
         return poly
 
     def _rotate(self, points, radians):
@@ -162,9 +160,9 @@ class Shape():
     def get_points(self):
         """Given size and center, return vertices; also move to top with zorder"""
         #LOG.debug('angle:%d', self.angle)
-        Shape.shared_zorder += ZORDER_INC
-        self.zorder = self.shared_zorder
-        LOG.debug('zorder:%d', self.zorder)
+        #Shape.shared_zorder += ZORDER_INC
+        #self.zorder = self.shared_zorder
+        #LOG.debug('zorder:%d', self.zorder)
         if self.which == 'C':
             return self.xy
 
