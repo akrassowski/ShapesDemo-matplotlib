@@ -144,7 +144,11 @@ class Connext(ABC):
 
     def mark_gone(self, shape, poly_key, clear=False):
         """mark or unmark the Gone state - a X in center"""
-        LOG.info(f'{poly_key=} {self.poly_dic[poly_key].get_xy()=}')
+        LOG.info(f'{poly_key=}')
+        if shape.which == 'C':
+            LOG.info(f'{shape.xy=}')
+        else:
+            LOG.info(f'{shape.xy=} {self.poly_dic[poly_key].get_xy()=}')
         return self._mark(shape, poly_key, "x", clear)
 
     def is_poly_key_gone(self, poly_key):
