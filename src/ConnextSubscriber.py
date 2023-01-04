@@ -36,6 +36,7 @@ class ConnextSubscriber(Connext):
         self.reader_dic = {}  # one reader per Shape key: CST values: dds.DataReader
         self.poly_pub_dic = defaultdict(list)  # key: pubHandle values: [poly_key1, poly_key2...]
         self.handles_set = set()
+        self.handle_dic = {}
         self.subscriber = dds.Subscriber(self.participant_with_qos)
         reader_qos = self.qos_provider.datareader_qos
 
@@ -51,6 +52,7 @@ class ConnextSubscriber(Connext):
                 listener,
                 status_mask
             )
+            self.handle_dic[which] = str(self.reader_dic[which].instance_handle)
 
     def init_get_topic(self, which, config):
         """get a Content Filtered or normal Topic"""
@@ -64,12 +66,12 @@ class ConnextSubscriber(Connext):
                 min(cfxy[0][0], cfxy[1][0]),
                 min(self.matplotlib.flip_y(cfxy[0][1]), self.matplotlib.flip_y(cfxy[1][1]))
             )
-            width, height = abs(cfxy[0][0] - cfxy[1][0]), abs(cfxy[0][1] - cfxy[1][1])
+            extents = abs(cfxy[0][1] - cfxy[1][1]), abs(cfxy[0][0] - cfxy[1][0])
             LOG.debug(f'filtering for {expr=} {params=} {anchor=} {height=} {width=}')
 
-            ec_, fc_ = COLOR_MAP['BLACK'], COLOR_MAP['GREY']
+            colors = COLOR_MAP['BLACK'], COLOR_MAP['GREY']
             self.matplotlib.axes.add_patch(
-                self.matplotlib.create_rectangle(anchor, height, width, fc_, ec_, zorder=10)
+                self.matplotlib.create_rectangle(anchor, extents, colors)
             )
         return topic
 
@@ -77,10 +79,14 @@ class ConnextSubscriber(Connext):
         """ helper to fetch depth from a reader"""
         return self.reader_dic[which].qos.resource_limits.max_samples_per_instance
 
-    def process_state(self, reader):
+    def process_state(self, reader, info):
         """react to a status change"""
         if reader.status_changes & dds.StatusMask.LIVELINESS_LOST is not None:
             LOG.warning('LIVELINESS LOST')
+            ihandle = info.instance_handle
+            print(f'{str(ihandle)=} {reader.status_changes=} {dir(reader)=}')
+            ##print(f'{reader.key_value(ihandle)=} {reader.is_matched_publication_alive=}')
+            ##breakpoint()
             self.do_mark_gone(reader)
         if reader.status_changes & dds.StatusMask.LIVELINESS_CHANGED is not None:
             LOG.warning(f'LIVELINESS CHANGED {reader.liveliness_changed_status.alive_count_change}')
@@ -112,7 +118,7 @@ class ConnextSubscriber(Connext):
             self.handles_set.add(handle)
             self.poly_pub_dic[handle].append(instance_gen_key)
             LOG.info(f'{self.poly_pub_dic[handle]=}')
-            shape = Shape.from_sub_sample_seq(
+            shape = Shape.from_sub_sample(
                 matplotlib=self.matplotlib,
                 which=which,
                 seq=seq,
@@ -194,7 +200,7 @@ class ConnextSubscriber(Connext):
                 )
             else:
                 LOG.info(f"State changed: {info.state}")
-                self.process_state(reader)
+                self.process_state(reader, info)
 
     def draw(self, _):
         """The animation function, called periodically in a set interval, reads the
