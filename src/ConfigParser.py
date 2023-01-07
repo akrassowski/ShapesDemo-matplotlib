@@ -233,7 +233,7 @@ class ConfigParser:
                 self.parse_sub(cfg_dic[key], key)
 
     def parse_sub(self, cfg, entity_name):
-        """parse the sub dictionary"""
+        """parse the sub dictionary, saving as self.sub_dic to be retrieved with get_sub_config"""
         LOG.info('cfg:%s entity_name:%s', cfg, entity_name)
         for shape in cfg.keys():
             n_shape = self.normalize_shape(shape)
@@ -265,7 +265,7 @@ class ConfigParser:
         self.pub_dic = new_dic
 
     def parse_pub(self, cfg, entity_name):
-        """parse the pub dictionary"""
+        """parse the pub dictionary, saving as self.pub_dic to be retrieved with get_pub_config"""
         LOG.debug(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
         #print(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
 
