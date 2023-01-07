@@ -1,4 +1,16 @@
 #!/usr/bin/env python
+"""Implements shape class - holds Shape attributes"""
+
+# python imports
+from collections import defaultdict
+import logging
+import math
+from typing import List, Optional, Tuple, Union
+
+# application imports
+from matplotlib.patches import Polygon
+from Matplotlib import Matplotlib, ZORDER_BASE, ZORDER_INC
+from ShapeTypeExtended import ShapeTypeExtended
 
 ###############################################################################
 # (c) Copyright, Real-Time Innovations, 2021. All rights reserved.            #
@@ -8,7 +20,6 @@
 # This code contains trade secrets of Real-Time Innovations, Inc.             #
 ###############################################################################
 
-"""Implements multiplotlib shape class"""
 """Interface to App for all things shapey
    Shape is responsible for:
      ShapeDemo attributes: color, (x, y), size, fill, angle
@@ -18,12 +29,6 @@
      subscriber - pub_handle
      NOT responsible for the history-depth refs, see ConnextSubscriber for that
 """
-
-# python imports
-from collections import defaultdict
-import logging
-import math
-from Matplotlib import ZORDER_BASE, ZORDER_INC
 
 # Constants outside Object since there's a new MPLShape for each update
 PI = 3.14159
@@ -37,13 +42,17 @@ COLOR_MAP = {
 }
 HATCH_MAP = {0: None, 1: None, 2: "--", 3: "||"}
 
+# pylint: disable=too-many-instance-attributes
 class Shape():
     """holds shape attributes and helpers"""
     shared_zorder = ZORDER_BASE  # keep zorder at Shape-level and for each instance
     limit_xy, matplotlib, poly_create_func_dic = None, None, None
     init_once = False
 
-    def __init__(self, matplotlib, seq, which, color, xy, size, angle=None, fill=None):
+    # pylint: disable=too-many-arguments
+    def __init__(self, matplotlib: Matplotlib, seq: int, which: str,
+                 color: str, xy: Tuple[int, int], size: int,
+                 angle: Optional[float]=None, fill: Optional[int]=None) -> None:
         """generic constructor"""
         assert which in 'CST', f'shape must be one of CST not {which}'
         self.zorder = self.shared_zorder + ZORDER_INC
@@ -64,8 +73,10 @@ class Shape():
         self.angle, self.fill = angle, fill
         LOG.info('created self=%s', self)
 
+    # pylint: disable=too-many-arguments
     @classmethod
-    def from_sub_sample(cls, matplotlib, seq, which, data, extended):
+    def from_sub_sample(cls, matplotlib: Matplotlib, seq: int, which: str,
+                        data: ShapeTypeExtended, extended: bool):
         """create flattened Shape attributes from DDS attributes"""
         return cls(
             matplotlib=matplotlib, seq=seq,
@@ -78,7 +89,8 @@ class Shape():
         )
 
     @classmethod
-    def from_pub_sample(cls, matplotlib, which, sample, extended):
+    def from_pub_sample(cls, matplotlib: Matplotlib, which: str,
+                        sample: ShapeTypeExtended, extended: bool):
         """create from a publisher sample"""
         return cls(
             matplotlib=matplotlib, seq=42,
@@ -90,7 +102,7 @@ class Shape():
             fill=sample.fillKind if extended else None
         )
 
-    def update(self, x, y, angle=None):
+    def update(self, x: int, y: int, angle: Optional[float]=None):
         """change position of existing shape"""
         # ignores size/fill changes
         self.xy = x, self.limit_xy[1] - y
@@ -100,13 +112,13 @@ class Shape():
         self.zorder = self.shared_zorder
         LOG.debug('zorder:%d', self.zorder)
 
-    def get_sequence_number(self):
+    def get_sequence_number(self) -> int:
         """getter for sequence number"""
         return self.seq
 
-    def reverse_if_wall(self, delta_xy):
+    def reverse_if_wall(self, delta_xy: List[int]) -> Tuple[List[int], List[int]]:
         """helper to compute new xy coordinate and delta"""
-        new_pos = [ self.xy[ix] + delta_xy[ix] for ix in range(2)]
+        new_pos = [self.xy[ix] + delta_xy[ix] for ix in range(2)]
         for ix in range(2):
             if new_pos[ix] + self.size > self.limit_xy[ix]:
                 delta_xy[ix] = -delta_xy[ix]
@@ -117,7 +129,7 @@ class Shape():
         return new_pos, delta_xy
 
     @staticmethod
-    def set_poly_center(poly, which, xy):
+    def set_poly_center(poly: Polygon, which: str, xy: List[int]) -> Polygon:
         """helper to set the poly's centerpoint"""
         assert which in 'CST', f'Invalid shape: {which}'
         if which == 'C':
@@ -126,7 +138,7 @@ class Shape():
             poly.set_xy(xy)
         return poly
 
-    def _rotate(self, points, radians):
+    def _rotate(self, points: List[Tuple[int, int]], radians: float) -> List[Tuple[int, int]]:
         """apply a rotation around the center"""
         ret_val = []
         center_x, center_y = self.xy
@@ -140,49 +152,29 @@ class Shape():
             )
         return ret_val
 
-    def get_mpl_points(self):
-        """@Return the adjusted points for use by matplotlib"""
-        if self.which == 'C':
-            #return self.xy[0], self.mpl2sd(self.xy[1])
-            return self.xy[0], self.matplotlib.flip_y(self.xy[1])
-
-        center_x, center_y = self.xy
-        size = self.size
-        if self.which == 'S':
-            points = [
-                (center_x - size, self.matplotlib.flip_y(center_y - size)),
-                (center_x - size, self.matplotlib.flip_y(center_y + size)),
-                (center_x + size, self.matplotlib.flip_y(center_y + size)),
-                (center_x + size, self.matplotlib.flip_y(center_y - size))
-            ]
-        return points
-
-    def get_points(self):
+    def get_points(self) -> Union[Tuple[int, int], List[Tuple[int, int]]]:
         """Given size and center, return vertices; also move to top with zorder"""
-        #LOG.debug('angle:%d', self.angle)
-        #Shape.shared_zorder += ZORDER_INC
-        #self.zorder = self.shared_zorder
-        #LOG.debug('zorder:%d', self.zorder)
         if self.which == 'C':
             return self.xy
 
-        center_x, center_y = self.xy
-        size = self.size
+        assert self.which in 'ST', f'Shape type {self.which} not one of: CST'
+        bot_y = self.xy[1] - self.size
+        top_y = self.xy[1] + self.size
+        bot_right = self.xy[0] + self.size, bot_y
+        bot_left = self.xy[0] - self.size, bot_y
         if self.which == 'T':
             points = [
-                (center_x, center_y + size),
-                (center_x + size, center_y - size),
-                (center_x - size, center_y - size)
+                (self.xy[0], top_y),
+                bot_right,
+                bot_left
             ]
-        elif self.which == 'S':
+        else:  # square
             points = [
-                (center_x - size, center_y - size),
-                (center_x - size, center_y + size),
-                (center_x + size, center_y + size),
-                (center_x + size, center_y - size)
+                bot_left,
+                (self.xy[0] - self.size, top_y),
+                (self.xy[0] + self.size, top_y),
+                bot_right
             ]
-        else:
-            assert False, f'Shape type {self.which} not one of: CST'
 
         if self.angle is not None:
             #LOG.info(f'ROTATING: {self.angle=}')
@@ -190,7 +182,8 @@ class Shape():
         return points
 
     @staticmethod
-    def face_and_edge_color_code(fill, color):
+    def face_and_edge_color_code(fill: Optional[int], color: str) -> Tuple[str, str]:
+        """compte the edge and face color from the fill and color"""
         if fill:
             fcolor = COLOR_MAP['WHITE']
             ecolor = COLOR_MAP[color]
