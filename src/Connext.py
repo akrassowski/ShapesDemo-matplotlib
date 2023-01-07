@@ -124,7 +124,7 @@ class Connext(ABC):
 
     def _mark(self, shape, poly_key, char, clear=False):
         """helper to mark or unmark the state with the passed character"""
-        fc, ec = shape.face_and_edge_color_code(shape.fill, shape.color)
+        _, ec = shape.face_and_edge_color_code(shape.fill, shape.color)
         x, y = shape.xy
         fontsize = (shape.size if char == "?" else shape.size*2)
         if shape.which == 'T':
@@ -133,8 +133,9 @@ class Connext(ABC):
         #weight = 'bold' if char == "?" else 'normal'
         key = poly_key+self.GONE+char
         text_shape = self.matplotlib.axes.text(
-            x, y, " " if clear else char, ha='center', va='center',
-            color=ec, fontsize=fontsize, zorder=shape.zorder+1
+            x, y, (" " if clear else char), ha='center', va='center',
+            color=ec, fontsize=fontsize, zorder=shape.zorder+1,
+            rotation=(0 if shape.angle is None else shape.angle)
         )
         return key, text_shape
 
@@ -144,7 +145,11 @@ class Connext(ABC):
 
     def mark_gone(self, shape, poly_key, clear=False):
         """mark or unmark the Gone state - a X in center"""
-        LOG.info(f'{poly_key=} {self.poly_dic[poly_key].get_xy()=}')
+        LOG.info(f'{poly_key=}')
+        if shape.which == 'C':
+            LOG.info(f'{shape.xy=}')
+        else:
+            LOG.info(f'{shape.xy=} {self.poly_dic[poly_key].get_xy()=}')
         return self._mark(shape, poly_key, "x", clear)
 
     def is_poly_key_gone(self, poly_key):

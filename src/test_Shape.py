@@ -10,6 +10,8 @@ class Test(unittest.TestCase):
 
     def setUp(self):
         matplotlib = MagicMock()  # only mock the values that matter
+        #matplotlib.args.graph_xy = (240, 270)
+        #matplotlib.args.figure_xy = (2, 3)
         matplotlib.axes.get_xlim.return_value = (0, 240)
         matplotlib.axes.get_ylim.return_value = (0, 270)
 
@@ -108,7 +110,6 @@ class Test(unittest.TestCase):
         self.square.angle = 0
         start = sorted(self.square.get_points())
         #self.assertEqual(start[
-        #print(start)
         self.square.angle = 90
         end = sorted(self.square.get_points())
         #print(end)
