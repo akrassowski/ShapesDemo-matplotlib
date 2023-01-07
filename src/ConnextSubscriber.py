@@ -67,7 +67,7 @@ class ConnextSubscriber(Connext):
                 min(self.matplotlib.flip_y(cfxy[0][1]), self.matplotlib.flip_y(cfxy[1][1]))
             )
             extents = abs(cfxy[0][1] - cfxy[1][1]), abs(cfxy[0][0] - cfxy[1][0])
-            LOG.debug(f'filtering for {expr=} {params=} {anchor=} {height=} {width=}')
+            LOG.debug(f'filtering for {expr=} {params=} {anchor=} {extents=}')
 
             colors = COLOR_MAP['BLACK'], COLOR_MAP['GREY']
             self.matplotlib.axes.add_patch(
