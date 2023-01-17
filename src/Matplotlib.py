@@ -32,7 +32,7 @@ except ImportError as exc:
 
 # space between panels
 HORIZONTAL_GAP, VERTICAL_GAP = 30, 85
-ZORDER_BASE, ZORDER_INC = 10, 1
+ZORDER_BASE = 10
 
 class Matplotlib:
     """Wrapper to create a graphing environment using the matplotlib library"""
@@ -88,7 +88,8 @@ class Matplotlib:
             image = plt.imread(image_filename)
             imagebox = OffsetImage(image, zoom=0.3, alpha=0.15)
             imagebox.image.axes = self.axes
-            abox = AnnotationBbox(imagebox, (0.5, 0.5), xycoords='axes fraction', bboxprops={'lw':0})
+            abox = AnnotationBbox(imagebox, (0.5, 0.5),
+                                  xycoords='axes fraction', bboxprops={'lw':0})
             self.axes.add_artist(abox)
 
     def flip_y(self, y):

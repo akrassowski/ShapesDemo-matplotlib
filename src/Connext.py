@@ -29,10 +29,12 @@ def get_cwd(file):
     """@return fullpath of local file"""
     return os.path.dirname(os.path.realpath(file))
 
+
 class Connext(ABC):
     """Parent class for ConnextPublisher an ConnextSubscriber"""
     WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
     GONE = 'gone'
+    cls_nap_ix = 0
 
     def __init__(self, matplotlib, args):
         self.args = args
@@ -101,11 +103,16 @@ class Connext(ABC):
                 max_y = y if y > max_y else max_y
             size = int(max_x - min_x)
             return size, (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
+        raise NotImplementedError("add triangle, circle")
 
     def sleep_as_needed(self):
+        """intrasample sleep to throttle pub or sub via --nap"""
         if self.args.nap:
-            time.sleep(self.args.nap)        
-            LOG.info(f'Sleeping {self.args.nap=}')
+            secs_to_sleep = self.args.nap / 1000.0
+            # self.cls_nap_ix = (self.cls_nap_ix + 1) % len(self.args.nap)
+            #LOG.info('sleep called: %s', secs_to_sleep)
+            time.sleep(secs_to_sleep)
+            LOG.info(f'Sleeping {secs_to_sleep} ')  #ix: {self.cls_nap_ix} {self.args.nap}')
 
     def _mark2(self, which, edge_color, poly_key, char, clear=False):
         poly = self.poly_dic[poly_key]
@@ -116,15 +123,15 @@ class Connext(ABC):
             fontsize = int(fontsize * 0.7)
             y -= size * 0.45
         #weight = 'bold' if char == "?" else 'normal'
-        self.poly_dic[poly_key+self.GONE+char] = self.axes.text(
+        self.poly_dic[poly_key+self.GONE+char] = self.matplotlib.axes.text(
             x, y, " " if clear else char, ha='center', va='center',
-            color=edge_color, fontsize=fontsize, zorder=Math.maxint.zorder+1
+            color=edge_color, fontsize=fontsize #, zorder=self.zorder+1
         )
 
 
     def _mark(self, shape, poly_key, char, clear=False):
         """helper to mark or unmark the state with the passed character"""
-        _, ec = shape.face_and_edge_color_code(shape.fill, shape.color)
+        _, edge_color = shape.face_and_edge_color_code(shape.fill, shape.color)
         x, y = shape.xy
         fontsize = (shape.size if char == "?" else shape.size*2)
         if shape.which == 'T':
@@ -134,7 +141,7 @@ class Connext(ABC):
         key = poly_key+self.GONE+char
         text_shape = self.matplotlib.axes.text(
             x, y, (" " if clear else char), ha='center', va='center',
-            color=ec, fontsize=fontsize, zorder=shape.zorder+1,
+            color=edge_color, fontsize=fontsize, zorder=shape.zorder+1,
             rotation=(0 if shape.angle is None else shape.angle)
         )
         return key, text_shape

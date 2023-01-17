@@ -60,6 +60,7 @@ def get_connext_obj_or_die(matplotlib, args):
     parser = ConfigParser(DEFAULT_DIC)
     parser.parse(args.config)
     args, is_pub, config = parser.get_config(args)
+    LOG.info(config)
     return (ConnextPublisher(matplotlib, args, config) if is_pub
        else ConnextSubscriber(matplotlib, args, config))
 
@@ -89,6 +90,7 @@ def main(args):
         handle_config_help_and_exit()
 
     connext_obj = get_connext_obj_or_die(matplotlib, args)
+    LOG.info(connext_obj)
 
     if args.justdds:
         handle_justdds(args, connext_obj)

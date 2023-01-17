@@ -68,7 +68,7 @@ class ArgParser:
                             help=("width and height of graph in pixels as two integers" +
                                   f"[{pair2str(default['MAX_XY'])}]"))
         parser.add_argument('-i', '--index', type=int, default=None,
-                            help=('screen slot index as 2 rows of 5 [1]-10\n' +
+                            help=('screen slot index as 3 rows of 5 [1]-15\n' +
                                   'For absolute x,y positioning use --position'))
         parser.add_argument('--log_level', '-l', type=int, default=logging.INFO,
                             help="logger level [40=INFO]")
@@ -98,8 +98,9 @@ class ArgParser:
         # internal args used whilst developing/debugging only
         parser.add_argument('--justdds', '-j', type=int,
                             help='just call dds draw this many times, no graphing, for testing')
-        parser.add_argument('--nap', '-n', type=float, default=0,
-                            help='intrasample naptime [default:0.0]')
+        parser.add_argument('--nap', '-n', type=float, default=0, # nargs='+',
+                            help=('intrasample naptime in milliseconds'))
+                          # 'specify multiple params for a repeating sequence of naps [default:1000.0]'))
 
         args = parser.parse_args(vargs)
 
@@ -113,6 +114,9 @@ class ArgParser:
             if args.index is None:
                 args.position = 1
             else:
-                args.position = args.index
+                if args.index <= 15 and args.index >= 1:
+                    args.position = args.index
+                else:
+                    raise ValueError(f'--index value must be 1-15 not {args.index}')
 
         return args
