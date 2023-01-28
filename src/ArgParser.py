@@ -93,8 +93,6 @@ class ArgParser:
             choices=[10, 20, 30, 40, 50], default=logging.INFO,
             help=("Set the logging level "
                   "10:DEBUG, 20:INFO, 30:WARN, 40:ERROR, 50:CRITICAL [20:INFO]"))
-        #parser.add_argument('--log_qos', action=argparse.BooleanOptionalAction,
-            #help="Log the QoS for all participants at log level INFO [no-log-qos]")
         parser.add_argument('--log_qos', default=logging.DEBUG, type=int,
             help="Log the QoS for all participants at the passed log level [10:DEBUG]")
         parser.add_argument('--position', '-p', default=None, nargs=2, metavar=('x' 'y'), type=int,
@@ -126,9 +124,6 @@ class ArgParser:
         # internal args used whilst developing/debugging only
         parser.add_argument('--justdds', '-j', type=int,
             help='just call dds draw this many times, no graphing, for testing')
-        parser.add_argument('--nap', '-n', type=float, default=0, # nargs='+',
-            help=('intrasample naptime in milliseconds'))
-            # 'specify multiple params for a repeating sequence of naps [default:1000.0]'))
 
         args = parser.parse_args(vargs)
 

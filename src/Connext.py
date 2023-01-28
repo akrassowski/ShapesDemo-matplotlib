@@ -34,7 +34,6 @@ class Connext(ABC):
     """Parent class for ConnextPublisher an ConnextSubscriber"""
     WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
     GONE = 'gone'
-    cls_nap_ix = 0
 
     def __init__(self, matplotlib, args):
         self.args = args
@@ -107,15 +106,6 @@ class Connext(ABC):
             size = int(max_x - min_x)
             return size, (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
         raise NotImplementedError("add triangle, circle")
-
-    def sleep_as_needed(self):
-        """intrasample sleep to throttle pub or sub via --nap"""
-        if self.args.nap:
-            secs_to_sleep = self.args.nap / 1000.0
-            # self.cls_nap_ix = (self.cls_nap_ix + 1) % len(self.args.nap)
-            #LOG.info('sleep called: %s', secs_to_sleep)
-            time.sleep(secs_to_sleep)
-            LOG.info(f'Sleeping {secs_to_sleep} ')  #ix: {self.cls_nap_ix} {self.args.nap}')
 
     def possibly_log_qos(self, entity):
         """log the qos at INFO level on its own"""

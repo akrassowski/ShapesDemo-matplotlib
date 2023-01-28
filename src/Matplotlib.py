@@ -59,9 +59,11 @@ class Matplotlib:
             # text = self.fig.suptitle(args.subtitle, fontproperties=font_props)
             self.fig.suptitle(args.subtitle, backgroundcolor='w')
 
-
         # hide the axis ticks/subticks/labels
-        if not args.ticks:
+        self.axes.use_sticky_edges = False
+        if args.ticks:
+            self.fig.set_figwidth(args.figure_xy[0]*1.3)
+        else:
             self.axes.get_xaxis().set_visible(False)
             self.axes.get_yaxis().set_visible(False)
             # remove margin

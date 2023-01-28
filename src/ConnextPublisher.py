@@ -157,7 +157,7 @@ class ConnextPublisher(Connext):
         points = shape.get_points()
         self.adjust_zorder()
 
-        LOG.info(f'{sample=} {type(sample)=}')
+        LOG.info(f'{sample=}')
         self.writer_dic[which].write(sample)  ## publish the sample
         self.sample_dic[key] = sample       ##   and remember it
         LOG.debug('sample:%s', self.sample_dic[key])
@@ -188,7 +188,6 @@ class ConnextPublisher(Connext):
         for pub_dic in self.pub_config_list:
             LOG.info(pub_dic)
             self.publish_sample(pub_dic)
-            self.sleep_as_needed()
         return self.poly_dic.values() ## TODO + self.gone_dic.values()
 
     def __repr__(self):

@@ -229,6 +229,5 @@ class ConnextSubscriber(Connext):
         last image received and draws it"""
         for which, reader in self.reader_dic.items():
             self.handle_samples(reader, which)
-            self.sleep_as_needed()
 
         return self.poly_dic.values()  # give back the updated values so they are rendered
