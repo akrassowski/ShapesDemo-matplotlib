@@ -57,15 +57,15 @@ class Test(unittest.TestCase):
            }
         }"""
 
-    def test_normalize_pub_config(self):
+    def test_parse_pub(self):
         config = self.parser.json_to_config(StringIO(self.config_multi))
-        self.parser.normalize_pub_config(config)
+        self.parser.parse_pub(config)
         self.assertEqual('S', self.parser.pub_list[0]['which'])
         self.assertEqual('GREEN', self.parser.pub_list[0]['color'])
-        self.assertTrue('S', self.parser.pub_list[1]['which'])
+        self.assertEqual('S', self.parser.pub_list[1]['which'])
         self.assertEqual('RED', self.parser.pub_list[1]['color'])
-        self.assertTrue('S', self.parser.pub_list[2]['which'])
-        self.assertIsNone(self.parser.pub_list[2].get('color'))
+        self.assertEqual('S', self.parser.pub_list[2]['which'])
+        self.assertEqual('BLUE', self.parser.pub_list[2].get('color'))
 
     def test_json_to_config(self):
         cfg = self.parser.json_to_config(StringIO(self.config_multi))
@@ -84,7 +84,8 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parser.pub_default_dic['color'], 'BLUE')
         self.assertEqual(self.parser.pub_default_dic['shapesize'], 30)
         self.assertEqual(self.parser.pub_default_dic['fillKind'], 0)
-        self.assertIsNone(self.parser.sub_default_dic['content_filter'])
+        self.assertIsNone(self.parser.sub_default_dic['content_filter_color'])
+        self.assertIsNone(self.parser.sub_default_dic['content_filter_xy'])
 
     def test_parse_sub_and_pub_no_file(self):
         self.parser.parse()
@@ -130,17 +131,15 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parser.pub_list[0]['shapesize'], 50)
 
     def test_minimal(self):
-        config = """{"pub": { "square": {
-            "size": 33
-        }}}"""
+        config = '{"pub": { "square": { "size": 33 }}}'
         self.parser.parse(StringIO(config))
         self.assertEqual(self.parser.pub_list[0]['which'], 'S', f'{self.parser.pub_list[0]=}')
         self.assertEqual(self.parser.pub_list[0]['shapesize'], 33)
-        self.assertIsNone(self.parser.pub_list[0].get('color'))
-        self.assertIsNone(self.parser.pub_list[0].get('xy'))
-        pprint(self.parser.pub_list)
-        cfg = self.parser.get_pub_config()
-        pprint(cfg)
+        self.assertEqual(self.parser.pub_list[0].get('color'), 'BLUE')
+        self.assertIsNotNone(self.parser.pub_list[0].get('xy'))
+        # pprint(self.parser.pub_list)
+        # cfg = self.parser.get_pub_config()
+        # pprint(cfg)
 
     def test_config_pub_square2(self):
         color1, color2 = 'Yellow', 'Green'
@@ -201,6 +200,21 @@ class Test(unittest.TestCase):
         pub_cfg_list = self.parser.get_pub_config()
         self.assertEqual(pub_cfg_list[0]['color'], 'RED') #, pprint(pub_cfg_list))
 
+    def test_sub_filter_xy(self):
+        config = '''{"sub": {
+             "square": { "content_filter_xy": [[0, 270], [240, 135]] },
+             "circle": { "content_filter_xy": [[1, 2], [3, 4]]}}}'''
+        # pprint(config)
+        self.parser.parse(StringIO(config))
+        sub_cfg = self.parser.get_sub_config()
+        s_cfg = sub_cfg.get('S')
+        self.assertIsNotNone(s_cfg)
+        self.assertIsNotNone(s_cfg.get('content_filter_xy'))
+        c_cfg = sub_cfg.get('C')
+        self.assertIsNotNone(c_cfg)
+        self.assertEqual(c_cfg.get('content_filter_xy')[0][1], 2)
+
+        
     def test_get_sub_config(self):
         config = """{"sub": { "circle": {}, "square": {}}}"""
         config = """{"sub": { "circle": {}}, "sub": {"square": {}}}"""

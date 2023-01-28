@@ -13,7 +13,7 @@
 
 # python imports
 import logging
-
+from pprint import pformat
 # Connext imports
 import rti.connextdds as dds
 # It is required that the rtiddsgen be alreay run to create the type class
@@ -71,6 +71,7 @@ class ConnextPublisher(Connext):
         LOG.info('args=%s config_list=%s', args, config_list)
         #writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
         self.publisher = dds.Publisher(self.participant_with_qos)
+        self.possibly_log_qos(self.publisher)
         ##self.pub_dic_list = []  # defaults will be keyd by just shape; actual will be shape-color
         self.shape_dic = {}  # which: Shape
         self.sample_dic = {}  # which-color: latest-published-sample
@@ -81,9 +82,10 @@ class ConnextPublisher(Connext):
             #shape, color = self.key_to_topic_and_color(key)
             LOG.info(f'{config_list=}')
             key = config['which']
-            self.writer_dic[key] = dds.DataWriter(self.publisher, self.stopic_dic[key])
+            self.writer_dic[key] = dds.DataWriter(self.publisher, self.stopic_dic[key], self.rw_qos_provider.datawriter_qos)
+            self.possibly_log_qos(self.writer_dic[key])
         self.pub_config_list = config_list
-        LOG.info('ConnextPublisher starting: pub_config_list=%s', self.pub_config_list)
+        LOG.debug(f'ConnextPublisher starting: pub_config_list: {pformat(self.pub_config_list)} {self.writer_dic=}')
 
     @staticmethod
     def key_to_topic_and_color(text):
@@ -98,19 +100,18 @@ class ConnextPublisher(Connext):
 
     def create_default_sample(self, pub_dic):
         """use the defaults to create a sample"""
-        #print(f'{which=} {self.pub_dic_list=}')
-        LOG.debug('pub_dic=%s', pub_dic)
-        which = pub_dic['which']
+        LOG.info('pub_dic=%s', pub_dic)
+        #which = pub_dic['which']
 
         sample = ShapeTypeExtended() if self.args.extended else ShapeType()
-        default = pub_dic  # just shape for defaults
-        LOG.info(default)
-        sample.x, sample.y = default['xy']
-        sample.color = default['color']
-        sample.shapesize = default['shapesize']
+        #default = pub_dic  # just shape for defaults
+        LOG.info(pub_dic)
+        sample.x, sample.y = pub_dic['xy']
+        sample.color = pub_dic['color']
+        sample.shapesize = pub_dic['shapesize']
         if self.args.extended:
-            sample.fillKind = default['fillKind']
-            sample.angle = default['angle']
+            sample.fillKind = pub_dic['fillKind']
+            sample.angle = pub_dic['angle']
         return sample
 
     def update_shape(self, shape, sample):
@@ -120,7 +121,8 @@ class ConnextPublisher(Connext):
     def publish_sample(self, pub_dic):
         """publish a single sample"""
         which = pub_dic['which']  # only 1 key for now
-        key = self.form_pub_key(which, pub_dic.get('color', 'BLUE'))  # TODO: refactor defaults?
+        #key = self.form_pub_key(which, pub_dic.get('color', 'BLUE'))  # TODO: refactor defaults?
+        key = self.form_pub_key(which, pub_dic.get('color'))  # TODO: refactor defaults?
         self.sample_counter.update([f'{key}w'])
         sample = self.sample_dic.get(key)
         is_new_sample = sample is None
@@ -143,19 +145,19 @@ class ConnextPublisher(Connext):
         LOG.debug('shape=%s', shape)
         if not is_new_sample:
             ###LOG.debug('PUBDIC: pub_dic[key]=%s', self.pub_dic[key])
-            xy, delta_xy = shape.reverse_if_wall(self.pub_config_list[0]['delta_xy'])
+            xy, delta_xy = shape.reverse_if_wall(pub_dic['delta_xy'])
             sample.x, sample.y = xy[0], self.matplotlib.flip_y(xy[1])
             # save the modified direction
-            self.pub_config_list[0]['delta_xy'] = delta_xy
+            pub_dic['delta_xy'] = delta_xy
             if self.args.extended:
                 # save mod angle
-                sample.angle += self.pub_config_list[0]['delta_angle']
+                sample.angle += pub_dic['delta_angle']
             #LOG.debug(f'SET_XY {key=} {xy=} {shape.angle=}')
         poly = self.poly_dic.get(poly_key)
         points = shape.get_points()
         self.adjust_zorder()
 
-        print(f'{sample=} {type(sample)=}')
+        LOG.info(f'{sample=} {type(sample)=}')
         self.writer_dic[which].write(sample)  ## publish the sample
         self.sample_dic[key] = sample       ##   and remember it
         LOG.debug('sample:%s', self.sample_dic[key])
@@ -187,7 +189,7 @@ class ConnextPublisher(Connext):
             LOG.info(pub_dic)
             self.publish_sample(pub_dic)
             self.sleep_as_needed()
-        return self.poly_dic.values()
+        return self.poly_dic.values() ## TODO + self.gone_dic.values()
 
     def __repr__(self):
         text = (f'<ConnextPublisher:\n' +

@@ -12,6 +12,7 @@ class Test(unittest.TestCase):
         args = MagicMock()
         args.graph_xy = (240, 270)
         args.figure_xy = (2, 3)
+        args.position = 7
         self.matplotlib = Matplotlib(args)
 
     def test_flip_0(self):

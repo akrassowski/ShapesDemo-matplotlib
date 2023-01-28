@@ -31,7 +31,7 @@ except ImportError as exc:
     LOG.fatal("No matplotlib %s", exc)
 
 # space between panels
-HORIZONTAL_GAP, VERTICAL_GAP = 30, 85
+HGAP, VGAP = 35, 85
 ZORDER_BASE = 10
 
 class Matplotlib:
@@ -46,13 +46,19 @@ class Matplotlib:
         matplotlib.rcParams['toolbar'] = 'None'
         self.plt = plt
         # create the Figure - SECOND
-        self.fig, self.axes = self.plt.subplots(figsize=args.figure_xy, num=args.box_title)
+        #self.fig, self.axes = self.plt.subplots(figsize=args.figure_xy, num=args.box_title)
+        self.fig, self.axes = self.plt.subplots(num=args.box_title)
+        self.fig.set_figwidth(args.figure_xy[0])
+        self.fig.set_figheight(args.figure_xy[1])
         self.axes.set_xlim((0, args.graph_xy[0]))
         self.axes.set_ylim((0, args.graph_xy[1]))
 
         # add a requested subtitle
         if args.subtitle:
-            self.fig.suptitle(args.subtitle)
+            font_props = {'backgroundcolor': 'w'}
+            # text = self.fig.suptitle(args.subtitle, fontproperties=font_props)
+            self.fig.suptitle(args.subtitle, backgroundcolor='w')
+
 
         # hide the axis ticks/subticks/labels
         if not args.ticks:
@@ -65,21 +71,27 @@ class Matplotlib:
         self.init_show_image(image_filename)
 
     def init_set_position(self, position):
+        """set the position of the canvas on the screen"""
         mngr = plt.get_current_fig_manager()
-        x, y, dx, dy = mngr.window.geometry().getRect()
-        if isinstance(position, int):
-            index = position
+        x, y, dx, dy = mngr.window.geometry().getRect()  # Mac yields: 0, 0, 237, 272 from ShapesDemo.DEFAULTS
+        LOG.info(f'{x=} {y=} {dx=} {dy=}')
+        if isinstance(position, int):  # when passed int, treat it as slot index
             # Compute the Slots when running multiple instances
-            row, row2, space_x = VERTICAL_GAP + dy, VERTICAL_GAP + 2*dy, HORIZONTAL_GAP+5
-            cols = [dx+HORIZONTAL_GAP, 2*dx+space_x, 3*dx+space_x, 4*dx+space_x]
-            # allow for up to 15 slots by index
+            row, row2 = VGAP+dy, 2*(dy + VGAP) -30
+            cols = [(ix * dx) + HGAP for ix in range(1,5)]
+            # allow for up to 15 slots by index            
+
             coord = [(0, 0), (cols[0], 0), (cols[1], 0), (cols[2], 0), (cols[3], 0),
                     (0, row), (cols[0], row), (cols[1], row), (cols[2], row), (cols[3], row),
                     (0, row2), (cols[0], row2), (cols[1], row2), (cols[2], row2), (cols[3], row2)]
-            x, y = coord[index-1]
+            x, y = coord[position-1]
             LOG.debug('x=%d, y=%d', x, y)
-        elif isinstance(position, (list, tuple)):
+        elif isinstance(position, (list, tuple)):  # when passed pair, treat as x,y
+            if len(position) != 2:
+                raise ValueError(f'Position parameter must be of length 2, not {position}')
             x, y = position
+        else:
+            raise ValueError(f'Position parameter must be int or x,y coord not {position}')
         mngr.window.setGeometry(x, y, int(dx), int(dy))
 
     def init_show_image(self, image_filename):

@@ -211,7 +211,7 @@ class Shape():
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
         LOG.info(f'{ecolor=} {fcolor=} {self.zorder=} {hatch=}')
         poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder)
-        #self.poly_list.append(poly)
+        ##self.poly_list.append(poly)
         return poly
 
     def __repr__(self):

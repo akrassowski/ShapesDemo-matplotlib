@@ -12,8 +12,10 @@
 
 
 # python imports
+import copy
 import json
 import logging
+from pprint import pformat
 from io import StringIO
 import sys
 
@@ -70,11 +72,14 @@ class ConfigParser:
         self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
             key='angle', value=0, help_='Starting angle for ShapeExtendedType')
         self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
-            key='delta_angle', value=0, help_='Rotation angle change per update for ShapeExtendedType')
+            key='delta_angle', value=0, help_='Rotation change per update for ShapeExtendedType')
 
         self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
-                               key='content_filter', value=None,
+                               key='content_filter_xy', value=None,
                                help_='Filter region tuple (top-left, bottom-right vertices)')
+        self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
+                               key='content_filter_color', value=None,
+                               help_='Filter for a specific color')
 
     @staticmethod
     def _default_and_help(ps_default_dic, ps_help_dic, ps_attr_list, key, value, help_):
@@ -117,9 +122,14 @@ class ConfigParser:
         return txt[0:4] == 'FILL'
 
     @staticmethod
-    def is_content_filter(txt):
+    def is_content_filter_color(txt):
         """@return True iff content filter is specified"""
-        return 'FILTER' in txt.upper()
+        return 'FILTER_COLOR' in txt.upper()
+
+    @staticmethod
+    def is_content_filter_xy(txt):
+        """@return True iff content filter is specified"""
+        return 'FILTER_XY' in txt.upper()
 
     @staticmethod
     def normalize_fill(txt):  # TODO use ShapeTypeExtended intEnum
@@ -178,18 +188,6 @@ class ConfigParser:
         return normalized
     # end Checkers and normalizers
 
-    def get_entity(self, act):
-        """Expect pubX or subY; return PUB, X or SUB, Y"""
-        split_result = act.split(":")
-        action, name = split_result if len(split_result) >=2 else [act, act]
-        u_act = action[0:3].upper()
-        #print(f'{action=} {name=} {u_act=}')
-        if u_act in "SUBPUB":
-            action = u_act
-        else:
-            raise ValueError(f'entity must start with "pub" or "sub" not {act}')
-        return action, name
-
     def json_to_config(self, stream_or_fname=None):
         """parsing user-entered config data, so tolerate mixed case"""
         # Validate the keys but let the values flow to the dic consumer
@@ -222,18 +220,19 @@ class ConfigParser:
         for key in cfg_dic.keys():
             key_upper = key.upper()
             if "PUB" in key_upper:
-                self.normalize_pub_config(cfg_dic[key])
+                self.parse_pub(cfg_dic[key])
                 ##self.parse_pub(cfg_dic[key], key)
             elif "SUB" in key_upper:
-                self.parse_sub(cfg_dic)
+                self.parse_sub(cfg_dic[key])
 
-    def normalize_pub_config(self, cfg):
+    def parse_pub(self, cfg):
         """fail on dup attributes, synthesize required with defaults"""
         for key in cfg.keys():
             which = self.normalize_shape(key)
-            pd = self.parse_one_pub(which, cfg[key])
-            self.pub_list.append(pd)
-            LOG.info(f'{which=} {pd=} ')
+            parsed = self.parse_one_pub(which, cfg[key])
+            self.pub_list.append(parsed)
+            LOG.info('which:%s parsed:%s', which, parsed)
+        LOG.info(pformat(self.pub_list))
 
     '''def normalize_sub(self, cfg):
         """parse the sub dictionary, saving as self.sub_list to be retrieved with get_sub_config"""
@@ -250,17 +249,20 @@ class ConfigParser:
     def parse_sub(self, cfg):
         """parse the sub dictionary, saving as self.sub_dic to be retrieved with get_sub_config"""
         LOG.info('cfg:%s ', cfg)
+        # breakpoint()
         for shape in cfg.keys():
             n_shape = self.normalize_shape(shape)
-            self.sub_dic[n_shape] = self.sub_default_dic
+            self.sub_dic[n_shape] = copy.copy(self.sub_default_dic)  # ensures key is present
             for attr in cfg[shape].keys():
                 value = cfg[shape][attr]
-                if self.is_content_filter(attr):
-                    self.sub_dic[n_shape]['content_filter'] = value
-        LOG.debug('sub_dic: %s', self.sub_dic)
+                if self.is_content_filter_xy(attr):
+                    self.sub_dic[n_shape]['content_filter_xy'] = value
+                elif self.is_content_filter_color(attr):
+                    self.sub_dic[n_shape]['content_filter_color'] = value.upper()
+        LOG.info('sub_dic: %s', self.sub_dic)
 
 
-    def parse_one_sub(self, cfg):
+    def parse_one_sub_FUTURE(self, cfg):
         """parse the sub dictionary, saving as self.sub_list to be retrieved with get_sub_config"""
         LOG.info('cfg:%s', cfg)
         for shape in cfg.keys():
@@ -268,9 +270,10 @@ class ConfigParser:
             self.sub_list[0][n_shape] = self.sub_default_dic
             for attr in cfg[shape].keys():
                 value = cfg[shape][attr]
-                if self.is_content_filter(attr):
-                    #self.sub_list[0][n_shape]['content_filter'] = value
-                    self.sub_dic[n_shape]['content_filter'] = value
+                if self.is_content_filter_xy(attr):
+                    self.sub_dic[n_shape]['content_filter_xy'] = value
+                elif self.is_content_filter_color(attr):
+                    self.sub_dic[n_shape]['content_filter_color'] = value.upper()
         LOG.debug('sub_dic: %s', self.sub_dic)
         #LOG.debug('sub_list[0]: %s', self.sub_list[0])
 
@@ -279,7 +282,7 @@ class ConfigParser:
         LOG.info(f'pub {cfg=} {cfg.keys()=} ')
         #print(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
         # start with default, overwrite as needed
-        pub_dic = self.pub_default_dic
+        pub_dic = copy.copy(self.pub_default_dic)
         pub_dic['which'] = which
         for attr in cfg.keys():
             attr_upper = attr.upper()
@@ -304,7 +307,7 @@ class ConfigParser:
             elif attr_upper == "DELTA_ANGLE":
                 pub_dic['delta_angle'] = self.normalize_float('delta_angle', value)
 
-        LOG.debug(f'{pub_dic=}')
+        LOG.info(f'{pub_dic=}')
         return pub_dic
 
     def get_config(self, parsed_args):
@@ -339,4 +342,5 @@ class ConfigParser:
         else:
             LOG.error("Must run as either publisher or subscriber, terminating")
             sys.exit(-1)
+        LOG.info(f'{is_pub=} {config=}')
         return parsed_args, is_pub, config

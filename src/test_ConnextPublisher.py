@@ -10,7 +10,7 @@ from ShapesDemo import DEFAULT_DIC
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.WARN,
     format='%(levelname)s %(filename)s-%(funcName)s:%(lineno)d %(message)s'
 )
 # pylint: disable=missing-function-docstring
@@ -21,7 +21,7 @@ class Test(unittest.TestCase):
     def setUp(self):
         arg_parser = ArgParser(DEFAULT_DIC)
         args = arg_parser.parse_args(["-d", "27", "-pub", "S", "--nap", "2000"])
-        print(f'{args=}')
+        LOG.info(f'{args=}')
         config_parser = ConfigParser(DEFAULT_DIC)
         parsed_args, is_pub, self.config = config_parser.get_config(args)
         LOG.info(f'setUp called {self.config=}')

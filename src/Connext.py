@@ -39,12 +39,15 @@ class Connext(ABC):
     def __init__(self, matplotlib, args):
         self.args = args
         self.matplotlib = matplotlib
-        self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum
+        self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum and Gone
         self.participant = dds.DomainParticipant(args.domain_id)
+
         self.qos_provider = self.get_qos_provider()
+        self.rw_qos_provider = dds.QosProvider(self.args.qos_file, f'{args.qos_lib}::{args.qos_profile}')
         self.participant_qos = dds.QosProvider.default.participant_qos_from_profile(
                         "ShapeTypeExtended_Library::ShapeTypeExtended_Profile")
         self.participant_with_qos = dds.DomainParticipant(args.domain_id, self.participant_qos)
+        ##self.participant_with_qos = dds.DomainParticipant(args.domain_id, provider)
         #
         # participant_qos = dds.QosProvider.default.participant_qos_from_profile(
             #f'{args.qos_lib}::{args.qos_profile}')
@@ -113,6 +116,11 @@ class Connext(ABC):
             #LOG.info('sleep called: %s', secs_to_sleep)
             time.sleep(secs_to_sleep)
             LOG.info(f'Sleeping {secs_to_sleep} ')  #ix: {self.cls_nap_ix} {self.args.nap}')
+
+    def possibly_log_qos(self, entity):
+        """log the qos at INFO level on its own"""
+        if self.args.log_qos:
+            LOG.log(self.args.log_qos, '\n' + entity.qos.to_string())
 
     def _mark2(self, which, edge_color, poly_key, char, clear=False):
         poly = self.poly_dic[poly_key]
