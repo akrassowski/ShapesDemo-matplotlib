@@ -154,6 +154,7 @@ class Shape():
 
     def get_points(self) -> Union[Tuple[int, int], List[Tuple[int, int]]]:
         """Given size and center, return vertices; also move to top with zorder"""
+
         if self.which == 'C':
             return self.xy
 
