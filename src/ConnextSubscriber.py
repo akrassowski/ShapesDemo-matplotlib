@@ -25,7 +25,6 @@ from ShapeListener import ShapeListener
 
 LOG = logging.getLogger(__name__)
 
-
 class ConnextSubscriber(Connext):
     """Subscriber can subscribe to one or more shapes"""
 
@@ -38,13 +37,14 @@ class ConnextSubscriber(Connext):
         self.handles_set = set()
         self.handle_dic = {}
         self.subscriber = dds.Subscriber(self.participant_with_qos)
+        self.possibly_log_qos(self.subscriber)
         reader_qos = self.qos_provider.datareader_qos
 
         listener = ShapeListener()
         status_mask = listener.get_mask()
         for which in config.keys():
             LOG.info(f'Subscribing to {which=} {config[which]=}')
-            topic = self.init_get_topic(which, config)
+            topic = self._init_get_topic(which, config)
             self.reader_dic[which] = dds.DataReader(
                 self.subscriber,
                 topic,
@@ -53,27 +53,45 @@ class ConnextSubscriber(Connext):
                 status_mask
             )
             self.handle_dic[which] = str(self.reader_dic[which].instance_handle)
+            self.possibly_log_qos(self.reader_dic[which])
 
-    def init_get_topic(self, which, config):
+    def _init_get_topic(self, which, config):
         """get a Content Filtered or normal Topic"""
         topic = self.stopic_dic[which]
-        cfxy = config[which].get('content_filter')
+        cfxy = config[which].get('content_filter_xy')
         if cfxy:
-            expr = "x >= %0 AND y >= %1 AND x <= %2 and y <= %3"
-            params = [str(n) for sublist in cfxy for n in sublist]
-            topic = dds.ContentFilteredTopic(topic, f"CFT-{which}", dds.Filter(expr, params))
-            anchor = (
-                min(cfxy[0][0], cfxy[1][0]),
-                min(self.matplotlib.flip_y(cfxy[0][1]), self.matplotlib.flip_y(cfxy[1][1]))
-            )
-            extents = abs(cfxy[0][1] - cfxy[1][1]), abs(cfxy[0][0] - cfxy[1][0])
-            LOG.debug(f'filtering for {expr=} {params=} {anchor=} {extents=}')
-
-            colors = COLOR_MAP['BLACK'], COLOR_MAP['GREY']
-            self.matplotlib.axes.add_patch(
-                self.matplotlib.create_rectangle(anchor, extents, colors)
-            )
+            topic = self._init_content_filter_xy(topic, which, cfxy)
+        else:
+            cfcolor = config[which].get('content_filter_color')
+            if cfcolor:
+                topic = self._init_content_filter_color(topic, which, cfcolor)
         return topic
+
+    def _init_content_filter_xy(self, topic, which, cfxy):
+        """handle filter region with top-left and bottom-right specified"""
+        hatch_pattern = { 'c': 'o', 'T': '/', 'S': '+'}
+        expr = "x >= %0 AND y >= %1 AND x <= %2 and y <= %3"
+        params = [str(n) for sublist in cfxy for n in sublist]
+        topic = dds.ContentFilteredTopic(topic, f"CFTxy-{which}", dds.Filter(expr, params))
+        anchor = (
+            min(cfxy[0][0], cfxy[1][0]),
+            #min(self.matplotlib.flip_y(cfxy[0][1]), self.matplotlib.flip_y(cfxy[1][1]))
+            min(cfxy[0][1], cfxy[1][1])
+        )
+        extents = abs(cfxy[0][1] - cfxy[1][1]), abs(cfxy[0][0] - cfxy[1][0])
+        LOG.info(f'filtering for {expr=} {params=} {anchor=} {extents=}')
+
+        colors = COLOR_MAP['BLACK'], COLOR_MAP['GREY']
+        rect = self.matplotlib.create_rectangle(anchor, extents, colors)
+        rect.set(hatch=hatch_pattern[which])
+        self.matplotlib.axes.add_patch(rect)
+        return topic
+
+    def _init_content_filter_color(self, topic, which, cfcolor):
+        expr = "color MATCH %0"
+        params = [f"'{cfcolor}'"]  # doubly-quoted string is needed, i.e. ["'RED'"]
+        LOG.debug(f'filtering for {expr=} {params=}')
+        return dds.ContentFilteredTopic(topic, f"CFTcolor-{which}", dds.Filter(expr, params))
 
     def get_max_samples_per_instance(self, which):
         """ helper to fetch depth from a reader"""
@@ -86,12 +104,10 @@ class ConnextSubscriber(Connext):
             ihandle = info.instance_handle
             print(f'{str(ihandle)=} {reader.status_changes=} {dir(reader)=}')
             ##print(f'{reader.key_value(ihandle)=} {reader.is_matched_publication_alive=}')
-            ##breakpoint()
             self.do_mark_gone(reader)
         if reader.status_changes & dds.StatusMask.LIVELINESS_CHANGED is not None:
             LOG.warning(f'LIVELINESS CHANGED {reader.liveliness_changed_status.alive_count_change}')
-        if reader.status_changes & dds.StatusMask.LIVELINESS_CHANGED is not None:
-            LOG.warning('LIVELINESS CHANGED')
+            self.do_mark_back(reader)
         if reader.status_changes & dds.StatusMask.SAMPLE_LOST is not None:
             LOG.warning('SAMPLE_LOST')
 
@@ -178,12 +194,18 @@ class ConnextSubscriber(Connext):
         if len(missing_handle_set):
             for missing_handle in missing_handle_set:
                 self._mark_gone(self.poly_pub_dic[missing_handle])
+                LOG.info('missing in set')
         for handle in handles:
             if not p_reader.is_matched_publication_alive(handle):
                 self._mark_gone(self.poly_pub_dic[handle])
+                LOG.info('missing in handle')
             else:
                 LOG.info(f'ALIVE {handle=}')
         self.handles_set -= missing_handle_set
+
+    def do_mark_back(self, p_reader):
+        LOG.info('TBD')
+        # TODO - mark this as back to life
 
     def handle_samples(self, reader, which):
         """get samples and handle each"""
@@ -207,6 +229,5 @@ class ConnextSubscriber(Connext):
         last image received and draws it"""
         for which, reader in self.reader_dic.items():
             self.handle_samples(reader, which)
-            self.sleep_as_needed()
 
         return self.poly_dic.values()  # give back the updated values so they are rendered

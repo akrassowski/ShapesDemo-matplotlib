@@ -9,7 +9,7 @@ from typing import List, Optional, Tuple, Union
 
 # application imports
 from matplotlib.patches import Polygon
-from Matplotlib import Matplotlib, ZORDER_BASE, ZORDER_INC
+from Matplotlib import Matplotlib, ZORDER_BASE
 from ShapeTypeExtended import ShapeTypeExtended
 
 ###############################################################################
@@ -55,7 +55,7 @@ class Shape():
                  angle: Optional[float]=None, fill: Optional[int]=None) -> None:
         """generic constructor"""
         assert which in 'CST', f'shape must be one of CST not {which}'
-        self.zorder = self.shared_zorder + ZORDER_INC
+        self.zorder = self.shared_zorder + 1
         if not self.init_once:
             self.matplotlib = matplotlib
             self.limit_xy = int(matplotlib.axes.get_xlim()[1]), int(matplotlib.axes.get_ylim()[1])
@@ -108,7 +108,7 @@ class Shape():
         self.xy = x, self.limit_xy[1] - y
         if angle is not None:
             self.angle = angle
-        Shape.shared_zorder += ZORDER_INC
+        Shape.shared_zorder += 1
         self.zorder = self.shared_zorder
         LOG.debug('zorder:%d', self.zorder)
 
@@ -212,7 +212,7 @@ class Shape():
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
         LOG.info(f'{ecolor=} {fcolor=} {self.zorder=} {hatch=}')
         poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder)
-        #self.poly_list.append(poly)
+        ##self.poly_list.append(poly)
         return poly
 
     def __repr__(self):

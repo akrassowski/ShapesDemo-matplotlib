@@ -29,6 +29,7 @@ def get_cwd(file):
     """@return fullpath of local file"""
     return os.path.dirname(os.path.realpath(file))
 
+
 class Connext(ABC):
     """Parent class for ConnextPublisher an ConnextSubscriber"""
     WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
@@ -37,12 +38,15 @@ class Connext(ABC):
     def __init__(self, matplotlib, args):
         self.args = args
         self.matplotlib = matplotlib
-        self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum
+        self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum and Gone
         self.participant = dds.DomainParticipant(args.domain_id)
+
         self.qos_provider = self.get_qos_provider()
+        self.rw_qos_provider = dds.QosProvider(self.args.qos_file, f'{args.qos_lib}::{args.qos_profile}')
         self.participant_qos = dds.QosProvider.default.participant_qos_from_profile(
                         "ShapeTypeExtended_Library::ShapeTypeExtended_Profile")
         self.participant_with_qos = dds.DomainParticipant(args.domain_id, self.participant_qos)
+        ##self.participant_with_qos = dds.DomainParticipant(args.domain_id, provider)
         #
         # participant_qos = dds.QosProvider.default.participant_qos_from_profile(
             #f'{args.qos_lib}::{args.qos_profile}')
@@ -101,11 +105,12 @@ class Connext(ABC):
                 max_y = y if y > max_y else max_y
             size = int(max_x - min_x)
             return size, (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
+        raise NotImplementedError("add triangle, circle")
 
-    def sleep_as_needed(self):
-        if self.args.nap:
-            time.sleep(self.args.nap)        
-            LOG.info(f'Sleeping {self.args.nap=}')
+    def possibly_log_qos(self, entity):
+        """log the qos at INFO level on its own"""
+        if self.args.log_qos:
+            LOG.log(self.args.log_qos, '\n' + entity.qos.to_string())
 
     def _mark2(self, which, edge_color, poly_key, char, clear=False):
         poly = self.poly_dic[poly_key]
@@ -116,15 +121,15 @@ class Connext(ABC):
             fontsize = int(fontsize * 0.7)
             y -= size * 0.45
         #weight = 'bold' if char == "?" else 'normal'
-        self.poly_dic[poly_key+self.GONE+char] = self.axes.text(
+        self.poly_dic[poly_key+self.GONE+char] = self.matplotlib.axes.text(
             x, y, " " if clear else char, ha='center', va='center',
-            color=edge_color, fontsize=fontsize, zorder=Math.maxint.zorder+1
+            color=edge_color, fontsize=fontsize #, zorder=self.zorder+1
         )
 
 
     def _mark(self, shape, poly_key, char, clear=False):
         """helper to mark or unmark the state with the passed character"""
-        _, ec = shape.face_and_edge_color_code(shape.fill, shape.color)
+        _, edge_color = shape.face_and_edge_color_code(shape.fill, shape.color)
         x, y = shape.xy
         fontsize = (shape.size if char == "?" else shape.size*2)
         if shape.which == 'T':
@@ -134,7 +139,7 @@ class Connext(ABC):
         key = poly_key+self.GONE+char
         text_shape = self.matplotlib.axes.text(
             x, y, (" " if clear else char), ha='center', va='center',
-            color=ec, fontsize=fontsize, zorder=shape.zorder+1,
+            color=edge_color, fontsize=fontsize, zorder=shape.zorder+1,
             rotation=(0 if shape.angle is None else shape.angle)
         )
         return key, text_shape

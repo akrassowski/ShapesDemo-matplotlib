@@ -13,6 +13,7 @@
 # python imports
 import logging
 import sys
+import textwrap
 
 # application imports
 from ArgParser import ArgParser
@@ -35,6 +36,43 @@ DEFAULT_DIC = {
     'TITLE': 'Shapes'
 }
 
+EXAMPLE_INTRO = 'Example JSON config file contents for a '
+PUB_EXAMPLE = textwrap.dedent("""
+    { 
+      "pub": {
+        "circle": {
+          "delta_xy": [3, 4],
+          "xy": [80, 10]
+        },
+        "square": {
+          "color": "red",
+          "size": 30,
+          "fill": 2,
+          "xy": [80, 10],
+          "delta_angle": 5,
+          "delta_xy": [4, 5]
+        },
+        "triangle": {
+          "color": "green",
+          "xy": [80, 10],
+          "delta_angle": 5,
+          "delta_xy": [7, 4]
+        }
+      }
+    }
+""")
+
+SUB_EXAMPLE = textwrap.dedent("""
+    { 
+      "sub": {
+        "circle": {
+          "content_filter_color": "BLUE"
+        },
+        "square": {
+          "content_filter_xy": [[0, 135], [240, 270]]
+        }
+      }
+    }""")
 
 def handle_config_help_and_exit():
     """print the defaults and exit"""
@@ -52,14 +90,16 @@ def handle_config_help_and_exit():
     sub_dic_defaults, sub_dic_help = parser.get_sub_config(True)
     _print_defaults('Subscriber values and [default]:', sub_dic_defaults, sub_dic_help)
     _print_defaults('Publisher values and [default]:', pub_dic_defaults, pub_dic_help)
+    print(f'{EXAMPLE_INTRO} publishing instance: {PUB_EXAMPLE}\n'
+          f'{EXAMPLE_INTRO} subscribing instance: {SUB_EXAMPLE}')
     sys.exit(0)
-
 
 def get_connext_obj_or_die(matplotlib, args):
     """create either a Publisher or a Subscriber from config"""
     parser = ConfigParser(DEFAULT_DIC)
     parser.parse(args.config)
     args, is_pub, config = parser.get_config(args)
+    LOG.info(config)
     return (ConnextPublisher(matplotlib, args, config) if is_pub
        else ConnextSubscriber(matplotlib, args, config))
 
@@ -89,18 +129,19 @@ def main(args):
         handle_config_help_and_exit()
 
     connext_obj = get_connext_obj_or_die(matplotlib, args)
+    LOG.info(connext_obj)
 
     if args.justdds:
         handle_justdds(args, connext_obj)
         sys.exit(0)
 
     # lower interval if updates are jerky
-    unused_ref = matplotlib.func_animation(matplotlib.fig, connext_obj.draw, interval=20, blit=True)
+    unused_ref = matplotlib.func_animation(matplotlib.fig, connext_obj.draw, interval=args.publish_rate, blit=True)
     # Show the image and block until the window is closed
     matplotlib.plt.show()
     LOG.info("Exiting...")
 
-
+        
 if __name__ == "__main__":
     p_args = ArgParser(DEFAULT_DIC).parse_args(sys.argv[1:])
     TIME_FMT = '%(asctime)s,%(msecs)03d '

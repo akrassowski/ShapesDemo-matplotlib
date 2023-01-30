@@ -35,7 +35,6 @@ class Test(unittest.TestCase):
         self.assertEqual(bool(args.extended), False)
         self.assertEqual(args.subscribe, 'S')
         self.assertEqual(args.publish, None)
-        self.assertEqual(args.nap, 0)
 
     def test_publish_triangle(self):
         cmdline = ['--publish', 't']

@@ -12,27 +12,26 @@
 
 
 # python imports
+import copy
 import json
 import logging
+from pprint import pformat
 from io import StringIO
 import sys
 
 from Shape import COLOR_MAP
-from ConnextPublisher import ConnextPublisher
 
 LOG = logging.getLogger(__name__)
 
 # Strategy:
 # keep sub & pub separate even though only one is used at a time
-# key dic by which & color to allow for different settings by shape & color
+# key list of dic by which & color to allow for different settings by shape & color
 # Population
-# start with empty pub and sub dictionaries
-# apply any config file on top
-# if any shape entry
-# start with defaults
-# override with file values
-# override with any cmd-line values
-# mark either pub or sub active by clearing the other
+# parse into list of pub dic and single sub_dic
+# validate attributes - dup = error
+# fill in missing with defaults
+# cmd-line values are limited to default shape names
+# TODO: allow pub and sub in same instance?
 
 FILL_KIND_LIST = ['SOLID', 'EMPTY', 'HORIZONTAL', 'VERTICAL']
 VALID_SHAPE_LETTERS = 'CST'
@@ -41,71 +40,67 @@ class ConfigParser:
     """parse the JSON config file populating a sub or pub dic"""
 
     def __init__(self, defaults):
-        self.pub_dic = {}  # holds normalized publisher data  TODO: keyed by Shape-Color
-        self.pub_dic_default = {}
-        self.pub_dic_help = {}
+        self.pub_list = []  # list of pub dicts
+        self.pub_default_dic = {}
+        self.pub_help_dic = {}
         self.pub_attr = []
 
-        self.sub_dic = {}  # holds normalized subscriber data
-        self.sub_dic_default = {}
-        self.sub_dic_help = {}
+        self.sub_dic = {}
+        #self.sub_list = [{}]  # holds normalized subscriber data as 1 element list
+        self.sub_default_dic = {}
+        self.sub_help_dic = {}
         self.sub_attr = []
         self.init_defaults(defaults)
 
     def init_defaults(self, defaults):
         """Helper to initialize a shape's default values as byproduct of help"""
-        self.defaults = defaults
-        self._pub_default_and_help('xy', [50, 50], 'Starting xy position')
-        self._pub_default_and_help(
-            'delta_xy', [5, 5], 'Center x and y change per update')
+        self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
+            key='xy', value=[50, 50], help_='Starting xy position')
+        self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
+            key='delta_xy', value=[5, 5], help_='Center x and y change per update')
 
-        color_list = COLOR_MAP.keys()
         trans = str.maketrans("", "", "'dict_keys()[]")
-        colors = str(color_list).translate(trans)
-        self._pub_default_and_help('color', defaults['COLOR'], 'Shape color: ' + colors)
-        self._pub_default_and_help('shapesize', 30, 'Size of shape in pixels')
-        self._pub_default_and_help('fillKind', 0,
-                                  ('Fill pattern of the ShapeExtendedType: ' +
-                                   '[0 (solid)], 1 (empty), 2 (horizontal), 3 (vertical)'))
-        self._pub_default_and_help('angle', 0, 'Starting angle for ShapeExtendedType')
-        self._pub_default_and_help(
-            'delta_angle', 0, 'Rotation angle change per update for ShapeExtendedType')
-        # self.pub_default_and_help('reliability_type', 'best',
-        #                           'type of reliability: best, reliable')
+        colors = str(COLOR_MAP.keys()).translate(trans)
+        self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
+            key='color', value=defaults['COLOR'], help_='Shape color: ' + colors)
+        self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
+            key='shapesize', value=30, help_='Size of shape in pixels')
+        self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
+            key='fillKind', value=0,
+            help_=('Fill pattern of the ShapeExtendedType: ' +
+                  '[0 (solid)], 1 (empty), 2 (horizontal), 3 (vertical)'))
+        self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
+            key='angle', value=0, help_='Starting angle for ShapeExtendedType')
+        self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
+            key='delta_angle', value=0, help_='Rotation change per update for ShapeExtendedType')
 
-        # self.sub_default_and_help('reliability_type', 'best',
-        #                          'type of reliability: best, reliable')
-        self._sub_default_and_help('content_filter', None,
-                                   'Filter region tuple (top-left, bottom-right vertices)')
+        self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
+                               key='content_filter_xy', value=None,
+                               help_='Filter region tuple (top-left, bottom-right vertices)')
+        self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
+                               key='content_filter_color', value=None,
+                               help_='Filter for a specific color')
 
     @staticmethod
-    def _default_and_help(value_dic, help_dic, key, value, help_text):
-        value_dic[key] = value
-        help_dic[key] = help_text
-
-    def _sub_default_and_help(self, key, value, help_text):
-        """add key, value, help to dictionaries"""
-        self._default_and_help(self.sub_dic_default,
-                               self.sub_dic_help, key, value, help_text)
-        self.sub_attr.append(key)
-
-    def _pub_default_and_help(self, key, value, help_text):
-        """add key, value, help to dictionaries"""
-        self._default_and_help(self.pub_dic_default,
-                               self.pub_dic_help, key, value, help_text)
-        self.pub_attr.append(key)
+    def _default_and_help(ps_default_dic, ps_help_dic, ps_attr_list, key, value, help_):
+        """add key, value, help to either pub or sub dictionaries"""
+        ps_default_dic[key] = value
+        ps_help_dic[key] = help_
+        ps_attr_list.append(key)
 
     def get_pub_config(self, default=False):
         """public getter for pub config"""
-        return (self.pub_dic_default, self.pub_dic_help) if default else self.pub_dic
+        return (self.pub_default_dic, self.pub_help_dic) if default else self.pub_list
 
     def get_sub_config(self, default=False):
         """public getter for sub config"""
-        return (self.sub_dic_default, self.sub_dic_help) if default else self.sub_dic
+        ## return (self.sub_default_dic, self.sub_help_dic) if default else self.sub_list
+        return (self.sub_default_dic, self.sub_help_dic) if default else self.sub_dic
 
     ### Checkers and normalizers
     @staticmethod
-    def err_msg_(param, desired, value):
+    def _err_msg(param, desired, value):
+        """Helper to format an error message"""
         return f'{param} must be {desired} not {value}'
 
     @staticmethod
@@ -114,7 +109,7 @@ class ConfigParser:
         letter = shape[0].upper()
         if letter not in VALID_SHAPE_LETTERS:
             raise ValueError(
-                ConfigParser.err_msg_('Shape first letter',  f'in {VALID_SHAPE_LETTERS}', shape))
+                ConfigParser._err_msg('Shape first letter',  f'in {VALID_SHAPE_LETTERS}', shape))
         return letter
 
     @staticmethod
@@ -127,9 +122,14 @@ class ConfigParser:
         return txt[0:4] == 'FILL'
 
     @staticmethod
-    def is_content_filter(txt):
+    def is_content_filter_color(txt):
         """@return True iff content filter is specified"""
-        return 'FILTER' in txt.upper()
+        return 'FILTER_COLOR' in txt.upper()
+
+    @staticmethod
+    def is_content_filter_xy(txt):
+        """@return True iff content filter is specified"""
+        return 'FILTER_XY' in txt.upper()
 
     @staticmethod
     def normalize_fill(txt):  # TODO use ShapeTypeExtended intEnum
@@ -142,13 +142,13 @@ class ConfigParser:
                     normalized = ix
                     break
             else:  # python for..else
-                ValueError(ConfigParser.err_msg_('fillKind', f'in: {FILL_KIND_LIST}', txt))
+                ValueError(ConfigParser._err_msg('fillKind', f'in: {FILL_KIND_LIST}', txt))
         else:
             try:
                 normalized = int(txt)
             except Exception as exc:
                 phrase = f'in range 0-{len(FILL_KIND_LIST)}'
-                raise ValueError(ConfigParser.err_msg_('fillKind', phrase, txt)) from exc
+                raise ValueError(ConfigParser._err_msg('fillKind', phrase, txt)) from exc
         return normalized
 
     @staticmethod
@@ -165,7 +165,7 @@ class ConfigParser:
         try:
             normalized = int(value)
         except Exception as exc:
-            raise ValueError(ConfigParser.err_msg_(param, "an integer", value)) from exc
+            raise ValueError(ConfigParser._err_msg(param, "an integer", value)) from exc
         return normalized
 
     @staticmethod
@@ -174,34 +174,21 @@ class ConfigParser:
         try:
             normalized = float(value)
         except Exception as exc:
-            raise ValueError(ConfigParser.err_msg_(param, "a float", value)) from exc
+            raise ValueError(ConfigParser._err_msg(param, "a float", value)) from exc
         return normalized
 
     def normalize_xy(self, param, value):
         """Raise if there's something wrong"""
         if (not isinstance(value, tuple) and not isinstance(value, list)) or len(value) != 2:
-            raise ValueError(self.err_msg_(param, "a (x, y) list", value))
+            raise ValueError(self._err_msg(param, "a (x, y) list", value))
         try:
             normalized = [int(value[0]), int(value[1])]  # list not tuple so updates can be assigned
         except Exception as exc:
-            raise ValueError(self.err_msg_(param, "a [x, y] list of int", value)) from exc
+            raise ValueError(self._err_msg(param, "a [x, y] list of int", value)) from exc
         return normalized
     # end Checkers and normalizers
 
-    def get_entity(self, act):
-        """Expect pubX or subY; return PUB, X or SUB, Y"""
-        split_result = act.split(":")
-        action, name = split_result if len(split_result) >=2 else [act, act]
-        u_act = action[0:3].upper()
-        #print(f'{action=} {name=} {u_act=}')
-        if u_act in "SUBPUB":
-            action = u_act
-        else:
-            raise ValueError(f'entity must start with "pub" or "sub" not {act}')
-        return action, name
-
-
-    def parse(self, stream_or_fname=None):
+    def json_to_config(self, stream_or_fname=None):
         """parsing user-entered config data, so tolerate mixed case"""
         # Validate the keys but let the values flow to the dic consumer
         def _dict_decorate(ordered_pairs):
@@ -215,8 +202,6 @@ class ConfigParser:
                     dic[key] = value
             return dic
 
-        if not stream_or_fname:
-            return
         if isinstance(stream_or_fname, str):
             with open(stream_or_fname, 'r', encoding='utf8') as cfg_file:
                 cfg_dic = json.load(cfg_file, object_pairs_hook=_dict_decorate)
@@ -224,86 +209,106 @@ class ConfigParser:
             cfg_dic = json.loads(stream_or_fname.getvalue(), object_pairs_hook=_dict_decorate)
         else:
             raise ValueError(
-                self.err_msg_('param', 'must be StringIO or str', type(stream_or_fname)))
+                self._err_msg('param', 'must be StringIO or str', type(stream_or_fname)))
+        return cfg_dic
+
+    def parse(self, stream_or_fname=None):
+        """parsing user-entered config data, so tolerate mixed case"""
+        if not stream_or_fname:
+            return
+        cfg_dic = self.json_to_config(stream_or_fname)
         for key in cfg_dic.keys():
             key_upper = key.upper()
             if "PUB" in key_upper:
-                self.parse_pub(cfg_dic[key], key)
+                self.parse_pub(cfg_dic[key])
+                ##self.parse_pub(cfg_dic[key], key)
             elif "SUB" in key_upper:
-                self.parse_sub(cfg_dic[key], key)
+                self.parse_sub(cfg_dic[key])
 
-    def parse_sub(self, cfg, entity_name):
-        """parse the sub dictionary, saving as self.sub_dic to be retrieved with get_sub_config"""
-        LOG.info('cfg:%s entity_name:%s', cfg, entity_name)
-        for shape in cfg.keys():
-            n_shape = self.normalize_shape(shape)
-            self.sub_dic[n_shape] = self.sub_dic_default
+    def parse_pub(self, cfg):
+        """fail on dup attributes, synthesize required with defaults"""
+        for key in cfg.keys():
+            which = self.normalize_shape(key)
+            parsed = self.parse_one_pub(which, cfg[key])
+            self.pub_list.append(parsed)
+            LOG.info('which:%s parsed:%s', which, parsed)
+        LOG.info(pformat(self.pub_list))
+
+    '''def normalize_sub(self, cfg):
+        """parse the sub dictionary, saving as self.sub_list to be retrieved with get_sub_config"""
+        LOG.info('cfg:%s', cfg)
+        for key in cfg.keys():
+            which = self.normalize_shape(key)
+            self.sub_list[0][n_shape] = self.sub_default_dic
             for attr in cfg[shape].keys():
                 value = cfg[shape][attr]
                 if self.is_content_filter(attr):
-                    self.sub_dic[n_shape]['content_filter'] = value
-        LOG.debug('sub_dic: %s', self.sub_dic)
-
-    def fixup_unknown(self, shape, color):
-        """helper - now that color is known, replace UNKNOWN with color"""
-        attr_lis = ['angle', 'delta_angle', 'xy', 'delta_xy', 'fillKind', 'shapesize']  # pub attrs
-        key_unknown = ConnextPublisher.form_pub_key(shape, 'UNKNOWN')
-        key_known = ConnextPublisher.form_pub_key(shape, color)
-        new_dic = {}
-        for key in self.pub_dic.keys():
-            new_dic[key] = {}
-            for attr in attr_lis:
-                if key == key_unknown:
-                    if attr == attr_lis[0]:
-                        new_dic[key_known] = {'color': color}
-                    value = self.pub_dic[key_unknown].get(attr, -1)
-                    if value != -1:
-                        new_dic[key_known][attr] = value
-                else:
-                    new_dic[key][attr] = self.pub_dic[key][attr]
-        new_dic.pop(key_unknown, None)
-        self.pub_dic = new_dic
-
-    def parse_pub(self, cfg, entity_name):
-        """parse the pub dictionary, saving as self.pub_dic to be retrieved with get_pub_config"""
-        LOG.debug(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
-        #print(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
-
-        if len(cfg.keys()) > 1:
-            LOG.warning("Only shape 1's config will be used.  Publishing multiple shapes is TBD")
+                    self.sub_list[0][n_shape]['content_filter'] = value
+        LOG.debug('sub_list[0]: %s', self.sub_list[0])
+    '''
+    def parse_sub(self, cfg):
+        """parse the sub dictionary, saving as self.sub_dic to be retrieved with get_sub_config"""
+        LOG.info('cfg:%s ', cfg)
+        # breakpoint()
         for shape in cfg.keys():
             n_shape = self.normalize_shape(shape)
-            key = ConnextPublisher.form_pub_key(n_shape, 'UNKNOWN')
-            self.pub_dic[key] = self.pub_dic_default
-            #LOG.info(f'{self.pub_dic_default=} \n {self.pub_dic=} \n {cfg=}')
-            color = "BLUE"
+            self.sub_dic[n_shape] = copy.copy(self.sub_default_dic)  # ensures key is present
             for attr in cfg[shape].keys():
-                attr_upper = attr.upper()
                 value = cfg[shape][attr]
-                if isinstance(value, str):
-                    value = value.upper()
-                if attr_upper == "COLOR":
-                    color = value
-                    self.pub_dic[key]['color'] = color
-                elif self.is_shapesize(attr_upper):
-                    self.pub_dic[key]['shapesize'] = self.normalize_int('shapesize', value)
-                elif attr_upper == "ANGLE":
-                    self.pub_dic[key]['angle'] = self.normalize_float('angle', value)
-                elif self.is_fill(attr_upper):
-                    if isinstance(value, str):
-                        value = self.normalize_fill(value)
-                    self.pub_dic[key]['fillKind'] = value
-                #elif attr_upper == "RELIABILITY_TYPE":
-                    #self.pub_dic[key]['reliability_type'] = value
-                elif attr_upper == "XY":
-                    self.pub_dic[key]['xy'] = self.normalize_xy('xy', value)
-                elif attr_upper == "DELTA_XY":
-                    self.pub_dic[key]['delta_xy'] = self.normalize_xy('delta_xy', value)
-                elif attr_upper == "DELTA_ANGLE":
-                    self.pub_dic[key]['delta_angle'] = self.normalize_float('delta_angle', value)
+                if self.is_content_filter_xy(attr):
+                    self.sub_dic[n_shape]['content_filter_xy'] = value
+                elif self.is_content_filter_color(attr):
+                    self.sub_dic[n_shape]['content_filter_color'] = value.upper()
+        LOG.info('sub_dic: %s', self.sub_dic)
 
-            self.fixup_unknown(n_shape, color)
-        #LOG.debug(f'{self.pub_dic=}')
+
+    def parse_one_sub_FUTURE(self, cfg):
+        """parse the sub dictionary, saving as self.sub_list to be retrieved with get_sub_config"""
+        LOG.info('cfg:%s', cfg)
+        for shape in cfg.keys():
+            n_shape = self.normalize_shape(shape)
+            self.sub_list[0][n_shape] = self.sub_default_dic
+            for attr in cfg[shape].keys():
+                value = cfg[shape][attr]
+                if self.is_content_filter_xy(attr):
+                    self.sub_dic[n_shape]['content_filter_xy'] = value
+                elif self.is_content_filter_color(attr):
+                    self.sub_dic[n_shape]['content_filter_color'] = value.upper()
+        LOG.debug('sub_dic: %s', self.sub_dic)
+        #LOG.debug('sub_list[0]: %s', self.sub_list[0])
+
+    def parse_one_pub(self, which, cfg):
+        """@return pub_dic by parsing a pub dictionary"""
+        LOG.info(f'pub {cfg=} {cfg.keys()=} ')
+        #print(f'pub {cfg=} {cfg.keys()=} {entity_name=}')
+        # start with default, overwrite as needed
+        pub_dic = copy.copy(self.pub_default_dic)
+        pub_dic['which'] = which
+        for attr in cfg.keys():
+            attr_upper = attr.upper()
+            value = cfg[attr]
+            if isinstance(value, str):
+                value = value.upper()
+            if attr_upper == "COLOR":
+                color = value
+                pub_dic['color'] = color
+            elif self.is_shapesize(attr_upper):
+                pub_dic['shapesize'] = self.normalize_int('shapesize', value)
+            elif attr_upper == "ANGLE":
+                pub_dic['angle'] = self.normalize_float('angle', value)
+            elif self.is_fill(attr_upper):
+                if isinstance(value, str):
+                    value = self.normalize_fill(value)
+                pub_dic['fillKind'] = value
+            elif attr_upper == "XY":
+                pub_dic['xy'] = self.normalize_xy('xy', value)
+            elif attr_upper == "DELTA_XY":
+                pub_dic['delta_xy'] = self.normalize_xy('delta_xy', value)
+            elif attr_upper == "DELTA_ANGLE":
+                pub_dic['delta_angle'] = self.normalize_float('delta_angle', value)
+
+        LOG.info(f'{pub_dic=}')
+        return pub_dic
 
     def get_config(self, parsed_args):
         """prepare config from config or command-line"""
@@ -329,9 +334,13 @@ class ConfigParser:
             is_pub = True
             for which in parsed_args.publish:
                 defaults, _ = self.get_pub_config(default=True)
-                config[which] = defaults
-                LOG.debug('config[which]:%s', config[which])
+                config.update(defaults)
+                config['which'] = which
+                self.pub_list.append(config)
+                LOG.debug(f'{config["which"]=}')
+            config = self.pub_list
         else:
             LOG.error("Must run as either publisher or subscriber, terminating")
             sys.exit(-1)
+        LOG.info(f'{is_pub=} {config=}')
         return parsed_args, is_pub, config
