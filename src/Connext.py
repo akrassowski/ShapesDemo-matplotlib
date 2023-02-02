@@ -14,6 +14,7 @@
 # python imports
 from abc import ABC, abstractmethod
 from collections import Counter
+from distutils import core
 import logging
 import os
 import time
@@ -40,11 +41,18 @@ class Connext(ABC):
         self.matplotlib = matplotlib
         self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum and Gone
         self.participant = dds.DomainParticipant(args.domain_id)
+        #self.participant.participant_name = 'fred'
+        self.possibly_log_qos(self.participant)
 
         self.qos_provider = self.get_qos_provider()
         self.rw_qos_provider = dds.QosProvider(self.args.qos_file, f'{args.qos_lib}::{args.qos_profile}')
         self.participant_qos = dds.QosProvider.default.participant_qos_from_profile(
                         "ShapeTypeExtended_Library::ShapeTypeExtended_Profile")
+        entity_name = dds.EntityName('fred')
+        entity_name.role_name = 'the role of fred'
+        self.participant_qos.participant_name = entity_name
+        self.possibly_log_qos(self.participant_qos)
+
         self.participant_with_qos = dds.DomainParticipant(args.domain_id, self.participant_qos)
         ##self.participant_with_qos = dds.DomainParticipant(args.domain_id, provider)
         #
@@ -108,9 +116,12 @@ class Connext(ABC):
         raise NotImplementedError("add triangle, circle")
 
     def possibly_log_qos(self, entity):
-        """log the qos at INFO level on its own"""
+        """log the qos at selected log level on its own"""
         if self.args.log_qos:
-            LOG.log(self.args.log_qos, '\n' + entity.qos.to_string())
+            try:
+                LOG.log(self.args.log_qos, '\n' + entity.qos.to_string())
+            except AttributeError:
+                LOG.log(self.args.log_qos, "No qos attribute \n" + entity.to_string())
 
     def _mark2(self, which, edge_color, poly_key, char, clear=False):
         poly = self.poly_dic[poly_key]

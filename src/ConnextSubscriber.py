@@ -40,7 +40,7 @@ class ConnextSubscriber(Connext):
         self.possibly_log_qos(self.subscriber)
         reader_qos = self.qos_provider.datareader_qos
 
-        listener = ShapeListener()
+        listener = ShapeListener(args)
         status_mask = listener.get_mask()
         for which in config.keys():
             LOG.info(f'Subscribing to {which=} {config[which]=}')
