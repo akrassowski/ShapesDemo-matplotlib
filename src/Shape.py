@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple, Union
 from matplotlib.patches import Polygon
 from Matplotlib import Matplotlib, ZORDER_BASE
 from ShapeTypeExtended import ShapeTypeExtended
-
+ZORDER_INC = 2  # allow room for gone line
 ###############################################################################
 # (c) Copyright, Real-Time Innovations, 2021. All rights reserved.            #
 # No duplications, whole or partial, manual or electronic, may be made        #
@@ -23,7 +23,6 @@ from ShapeTypeExtended import ShapeTypeExtended
 """Interface to App for all things shapey
    Shape is responsible for:
      ShapeDemo attributes: color, (x, y), size, fill, angle
-     Polygon attributes: poly_list to hold self, gone
      matplotlib env - fig, axes, patches_list
      publisher - delta_xy, delta_angle
      subscriber - pub_handle
@@ -55,7 +54,8 @@ class Shape():
                  angle: Optional[float]=None, fill: Optional[int]=None) -> None:
         """generic constructor"""
         assert which in 'CST', f'shape must be one of CST not {which}'
-        self.zorder = self.shared_zorder + 1
+        self.zorder = self.shared_zorder + ZORDER_INC
+        self._gone = False
         if not self.init_once:
             self.matplotlib = matplotlib
             self.limit_xy = int(matplotlib.axes.get_xlim()[1]), int(matplotlib.axes.get_ylim()[1])
@@ -64,7 +64,6 @@ class Shape():
             }
         self.seq = seq
         self.color, self.which = color, which
-        self.poly_list = defaultdict(list)
         # now init the Shape params
         self.color_code = COLOR_MAP[color]
         self.xy = xy[0], self.limit_xy[1] - xy[1]
@@ -102,20 +101,31 @@ class Shape():
             fill=sample.fillKind if extended else None
         )
 
+    @property
+    def gone(self):
+        """getter for gone status"""
+        return self._gone
+    
+    @gone.setter 
+    def gone(self, value):
+        """setter for gone status"""
+        self._gone = value
+
     def update(self, x: int, y: int, angle: Optional[float]=None):
         """change position of existing shape"""
-        # ignores size/fill changes
+        # ignores size/fill changes unlike Pro's ShapeDemo
         self.xy = x, self.limit_xy[1] - y
         if angle is not None:
             self.angle = angle
-        Shape.shared_zorder += 1
+        Shape.shared_zorder += ZORDER_INC 
         self.zorder = self.shared_zorder
         LOG.debug('zorder:%d', self.zorder)
+        self.gone = False
 
     def get_sequence_number(self) -> int:
         """getter for sequence number"""
         return self.seq
-
+    
     def reverse_if_wall(self, delta_xy: List[int]) -> Tuple[List[int], List[int]]:
         """helper to compute new xy coordinate and delta"""
         new_pos = [self.xy[ix] + delta_xy[ix] for ix in range(2)]
@@ -153,7 +163,7 @@ class Shape():
         return ret_val
 
     def get_points(self) -> Union[Tuple[int, int], List[Tuple[int, int]]]:
-        """Given size and center, return vertices; also move to top with zorder"""
+        """Given size and center, return vertices"""
 
         if self.which == 'C':
             return self.xy
@@ -210,14 +220,14 @@ class Shape():
         poly = self.poly_create_func_dic[self.which]()
         fcolor, ecolor = self.face_and_edge_color_code(self.fill, self.color)
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
-        LOG.info(f'{ecolor=} {fcolor=} {self.zorder=} {hatch=}')
-        poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder)
-        ##self.poly_list.append(poly)
+        LOG.info(f'{ecolor=} {fcolor=} {self.zorder=}')
+        LOG.info('ecolor:%s fcolor:%s zorder:%s' % (ecolor, fcolor, self.zorder))
+        poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder+1)
         return poly
 
     def __repr__(self):
         text = ('Shape:<'
-                f'{self.which} seq:{self.seq} {self.xy} '
+                f'{self.which} seq:{self.seq} {self.xy} {self._gone} '
                 f'{self.size} {self.color} Z:{self.zorder}')
         if self.fill:
             text += f' fill:{self.fill}'

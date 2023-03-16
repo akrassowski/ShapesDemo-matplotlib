@@ -12,12 +12,11 @@
 
 
 # python imports
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import Counter
-from distutils import core
 import logging
+from math import sqrt
 import os
-import time
 
 # Connext imports
 import rti.connextdds as dds
@@ -35,21 +34,21 @@ class Connext(ABC):
     """Parent class for ConnextPublisher an ConnextSubscriber"""
     WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
     GONE = 'gone'
+    poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum and Gone
+    sample_counter = Counter()
+    participant_qos = dds.QosProvider.default.participant_qos_from_profile(
+        "ShapeTypeExtended_Library::ShapeTypeExtended_Profile")
 
     def __init__(self, matplotlib, args):
         self.args = args
         self.matplotlib = matplotlib
-        self.poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum and Gone
         self.participant = dds.DomainParticipant(args.domain_id)
-        #self.participant.participant_name = 'fred'
         self.possibly_log_qos(self.participant)
 
         self.qos_provider = self.get_qos_provider()
-        self.rw_qos_provider = dds.QosProvider(self.args.qos_file, f'{args.qos_lib}::{args.qos_profile}')
-        self.participant_qos = dds.QosProvider.default.participant_qos_from_profile(
-                        "ShapeTypeExtended_Library::ShapeTypeExtended_Profile")
-        entity_name = dds.EntityName('fred')
-        entity_name.role_name = 'the role of fred'
+        self.rw_qos_provider = dds.QosProvider(args.qos_file, f'{args.qos_lib}::{args.qos_profile}')
+        entity_name = dds.EntityName('EntityNameIsFred')
+        entity_name.role_name = 'the role of Fred'
         self.participant_qos.participant_name = entity_name
         self.possibly_log_qos(self.participant_qos)
 
@@ -78,7 +77,6 @@ class Connext(ABC):
                 'S': dds.Topic(self.participant_with_qos, "Square", ShapeType),
                 'T': dds.Topic(self.participant_with_qos, "Triangle", ShapeType)
             }
-        self.sample_counter = Counter()
 
     @staticmethod
     def form_poly_key(which, color, instance_num=None):
@@ -102,15 +100,17 @@ class Connext(ABC):
 
     @staticmethod
     def _get_size_and_center(points):
-        if len(points) == 5:
-            min_x, min_y = 0, 0
-            max_x, max_y = 500, 500
-            for point in points[0:4]:
+        min_x = max_x = points[0][0]
+        min_y = max_y = points[0][1]
+        num_points = len(points)
+        if num_points in [4, 5]:  # square, triangle
+            for point in points[1:]:
                 x, y = point
                 min_x = x if x < min_x else min_x
                 min_y = y if y < min_y else min_y
                 max_x = x if x > max_x else max_x
                 max_y = y if y > max_y else max_y
+                LOG.info(f'{min_x=} {min_y=} {max_x=} {max_y=}')
             size = int(max_x - min_x)
             return size, (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
         raise NotImplementedError("add triangle, circle")
@@ -123,54 +123,94 @@ class Connext(ABC):
             except AttributeError:
                 LOG.log(self.args.log_qos, "No qos attribute \n" + entity.to_string())
 
-    def _mark2(self, which, edge_color, poly_key, char, clear=False):
-        poly = self.poly_dic[poly_key]
-        size, x, y = self._get_size_and_center(poly.get_xy())
-        #Shape.face_and_edge_color_code(color)
-        fontsize = (size if char == "?" else size*2)
-        if which == 'T':
-            fontsize = int(fontsize * 0.7)
-            y -= size * 0.45
-        #weight = 'bold' if char == "?" else 'normal'
-        self.poly_dic[poly_key+self.GONE+char] = self.matplotlib.axes.text(
-            x, y, " " if clear else char, ha='center', va='center',
-            color=edge_color, fontsize=fontsize #, zorder=self.zorder+1
-        )
+    def form_gone_key(self, poly_key):
+        """return the formed key for a gone item"""
+        return f'{poly_key}-{self.GONE}'
 
-
-    def _mark(self, shape, poly_key, char, clear=False):
+    def _mark(self, shape, poly_key, char):
         """helper to mark or unmark the state with the passed character"""
+        LOG.info(f'{poly_key=} {shape=} {char=}')
+        poly = self.poly_dic[poly_key]
+        zorder = poly.zorder + 1
+        if shape.which == 'C':
+            x, y = poly.center
+        else:
+            points = poly.get_xy() if shape.which == 'C' else poly.get_xy()
+            LOG.info(f'{poly=} {points=}')
+            _, x, y = self._get_size_and_center(points)
+        LOG.info(f'{x=} {y=}')
         _, edge_color = shape.face_and_edge_color_code(shape.fill, shape.color)
-        x, y = shape.xy
+        return self._mark_line((x, y), shape, poly_key, edge_color, zorder)
+
+    """def _mark_char(self, center, char, shape, poly_key, color, zorder):
         fontsize = (shape.size if char == "?" else shape.size*2)
+        x, y = center
         if shape.which == 'T':
             fontsize = int(fontsize * 0.7)
             y -= shape.size * 0.45
         #weight = 'bold' if char == "?" else 'normal'
-        key = poly_key+self.GONE+char
-        text_shape = self.matplotlib.axes.text(
-            x, y, (" " if clear else char), ha='center', va='center',
-            color=edge_color, fontsize=fontsize, zorder=shape.zorder+1,
+        key = self.form_gone_key(poly_key)
+        text_shape = self.matplotlib.axes.text(  #self.matplotlib.fig.text(...) didn't show up
+            x, y, char, ha='center', va='center',
+            color=color, fontsize=fontsize, zorder=zorder,
             rotation=(0 if shape.angle is None else shape.angle)
         )
-        return key, text_shape
+        LOG.info(f'{text_shape}')
+        return key, text_shape"""
 
-    def mark_unknown(self, shape, poly_key, clear=False):
-        """mark or unmark the Unknown state - a ? in center"""
-        return self._mark(shape, poly_key, "?", clear)
+    def _get_points(self, center, shape, poly_key):
+        """helper to get the vertices of the X"""
+        if shape.which != 'C':
+            poly = self.poly_dic[poly_key]
+            points = self.matplotlib.get_points(poly)
+            if shape.which == 'S':
+                # top-left, bottom-right, center, top_right, bottom-left
+                endpoints = [points[0], points[2], center, points[1], points[3]]
+            elif shape.which == 'T':
+                # top-center, center, bottom-left, center, bottom-right
+                endpoints = [points[0], center, points[1], center, points[2]]
+            else:
+                raise ValueError(f'Shape must be one of: CST not {shape.which}')
+        else:  # Circle
+            # top-left, bottom-right, center, top_right, bottom-left
+            x, y = center
+            delta = sqrt((shape.size ** 2) / 2)
+            lt_x, rt_x, tp_y, bt_y = x - delta, x + delta, y + delta, y - delta
+            endpoints = [[lt_x, tp_y], [rt_x, bt_y], center, [rt_x, tp_y], [lt_x, bt_y]]
+        return endpoints
 
-    def mark_gone(self, shape, poly_key, clear=False):
-        """mark or unmark the Gone state - a X in center"""
-        LOG.info(f'{poly_key=}')
-        if shape.which == 'C':
-            LOG.info(f'{shape.xy=}')
-        else:
-            LOG.info(f'{shape.xy=} {self.poly_dic[poly_key].get_xy()=}')
-        return self._mark(shape, poly_key, "x", clear)
+    def _mark_line(self, center, shape, poly_key, color, zorder=None, clear=False):
+        """Mark an X as a multi-step line"""
+        endpoints = self._get_points(center, shape, poly_key)
+        key = self.form_gone_key(poly_key)
+        line = self.matplotlib.create_line(endpoints, color=color, zorder=zorder)
+        LOG.info(f'{key=} {endpoints=} {color=} {zorder=} {line=}')
+        self.matplotlib.axes.add_patch(line)
+        return key, line
+
+    def mark_unknown(self, shape, poly_key):
+        """mark the Unknown state - a ? in center"""
+        return self._mark(shape, poly_key, "?")
+
+    def mark_gone(self, shape, poly_key):
+        """mark the Gone state - a X in center"""
+        shape.gone = True
+        fstr = f'{poly_key=} {shape.xy=}'
+        if shape.which != 'C':
+            fstr += ' {self.poly_dic[poly_key].get_xy()=}'
+        LOG.info(fstr)
+        return self._mark(shape, poly_key, "x")
+
+    def mark_clear(self, shape, poly_key):
+        """clear any mark"""
+        shape.gone = False
+        LOG.info(f'{poly_key=} {shape.xy=} {self.poly_dic[poly_key].get_xy()=}')
+        return self._mark(shape, poly_key, " ")
 
     def is_poly_key_gone(self, poly_key):
         return self.GONE in poly_key
 
-    @abstractmethod
+    #  @abstractmethod
     def draw(self, _):
         """require any child implements this callback to matplotlib"""
+        raise ValueError
