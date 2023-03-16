@@ -10,9 +10,9 @@
 
 """Subscribes to Shapes and updates them in matplotlib"""
 
-
 # python imports
 from collections import defaultdict
+import json
 import logging
 
 # Connext imports
@@ -34,8 +34,6 @@ class ConnextSubscriber(Connext):
         self.shape_dic = {}  # Topic-color: InstanceGen
         self.reader_dic = {}  # one reader per Shape key: CST values: dds.DataReader
         self.poly_pub_dic = defaultdict(list)  # key: pubHandle values: [poly_key1, poly_key2...]
-        self.handles_set = set()
-        self.handle_dic = {}
         self.subscriber = dds.Subscriber(self.participant_with_qos)
         self.possibly_log_qos(self.subscriber)
         reader_qos = self.qos_provider.datareader_qos
@@ -52,7 +50,6 @@ class ConnextSubscriber(Connext):
                 listener,
                 status_mask
             )
-            self.handle_dic[which] = str(self.reader_dic[which].instance_handle)
             self.possibly_log_qos(self.reader_dic[which])
 
     def _init_get_topic(self, which, config):
@@ -97,43 +94,61 @@ class ConnextSubscriber(Connext):
         """ helper to fetch depth from a reader"""
         return self.reader_dic[which].qos.resource_limits.max_samples_per_instance
 
+    @staticmethod
+    def pprint_dict(a_dic):
+        """helper to pretty-print a dictionary"""
+        print(str(json.dumps(a_dic, indent=4, separators=(',', ': '))))
+
     def process_state(self, reader, info):
         """react to a status change"""
         if reader.status_changes & dds.StatusMask.LIVELINESS_LOST is not None:
-            LOG.warning('LIVELINESS LOST')
+            LOG.warning(f'LIVELINESS LOST for: {reader.topic_name}')
             ihandle = info.instance_handle
-            print(f'{str(ihandle)=} {reader.status_changes=} {dir(reader)=}')
-            ##print(f'{reader.key_value(ihandle)=} {reader.is_matched_publication_alive=}')
-            self.do_mark_gone(reader)
+            ##self.pprint_dict(dir(reader))
+            ##self.pprint_dict(dir(info))
+            LOG.info(f'{str(ihandle)=} {info.publication_handle=} {info.source_guid}')
+            try:
+                #LOG.info(f'{reader.is_matched_publication_alive(ihandle)=}')
+                LOG.info(f'{reader.status_changes=}')
+            except Exception as exc:
+                LOG.info(f'TOO GENERAL: {exc=}')
+            self.mark_reader_gone(reader, str(info.source_guid))
         if reader.status_changes & dds.StatusMask.LIVELINESS_CHANGED is not None:
-            LOG.warning(f'LIVELINESS CHANGED {reader.liveliness_changed_status.alive_count_change}')
-            self.do_mark_back(reader)
+            LOG.warning(f'LIVELINESS CHANGED {reader.liveliness_changed_status.alive_count_change} ')  #{ dir(reader.liveliness_changed_status)=}')
+            LOG.warning(f'LIVELINESS CHANGED {reader.matched_publications=} ')
+            ##if reader.liveliness_changed_status.alive_count_change:
+                ##self.do_mark_back(reader)
         if reader.status_changes & dds.StatusMask.SAMPLE_LOST is not None:
             LOG.warning('SAMPLE_LOST')
 
-    def handle_one_sample(self, which, seq, data, handle):
+    def handle_one_sample(self, which, seq, data, pub_handle):
         """update the poly_dic with fresh shape info"""
         ## create/update a matplotlib polygon from the sample data, add to poly_dic
         ## remove the prior poly's edge
         self.sample_counter.update([f'{which}r'])
         #LOG.warning(self.sample_counter[f'{which}r'])
-        instance_gen_key = f"{which}-{data.color}"
+        instance_gen_key = self.form_poly_key(which, data.color)
         #LOG.info('sample:%s', data)
         inst = self.instance_gen_dic.get(instance_gen_key)
         if inst:  # same key for shape
             shape = self.shape_dic[instance_gen_key]
             #LOG.info('update:%s', data)
+            if shape.gone:
+                LOG.info(f'{self.poly_dic.keys()=}')
+                gone_keys = [key for key in self.poly_dic if instance_gen_key in key]
+                for key in gone_keys:
+                    del self.poly_dic[key]
+                LOG.info(f'{gone_keys=}')
             shape.update(data.x, data.y, data.angle if self.args.extended else None)
             ##if self.sample_counter[f'{which}r'] > 100:
                 ##pass #shape.mark_unknown(self.plt)
         else:
-            LOG.info(f'{which=} {handle=}')
+            LOG.info(f'{which=} {pub_handle=}')
             inst = InstanceGen(self.get_max_samples_per_instance(which))
             self.instance_gen_dic[instance_gen_key] = inst
-            LOG.info(f'ADD {instance_gen_key=} at {handle=}')
-            self.handles_set.add(handle)
-            self.poly_pub_dic[handle].append(instance_gen_key)
-            LOG.info(f'{self.poly_pub_dic[handle]=}')
+            LOG.info(f'ADD {instance_gen_key=} at {pub_handle=}')
+            self.poly_pub_dic[pub_handle].append(instance_gen_key)
+            LOG.info(f'{self.poly_pub_dic[pub_handle]=}')
             shape = Shape.from_sub_sample(
                 matplotlib=self.matplotlib,
                 which=which,
@@ -141,7 +156,7 @@ class ConnextSubscriber(Connext):
                 data=data,
                 extended=self.args.extended
             )
-        self.shape_dic[instance_gen_key] = shape
+        self.shape_dic[instance_gen_key] = shape  # add new or updated shape to dict
         inst_ix = inst.next()
         LOG.debug('SHAPE: shape:%s, inst_ix=%d', shape, inst_ix)
         poly_key = self.form_poly_key(which, shape.color, inst_ix)
@@ -166,54 +181,42 @@ class ConnextSubscriber(Connext):
         if prev_poly:
             prev_poly.set(lw=self.THIN_EDGE_LINE_WIDTH)
 
-    def _mark_gone(self, gone_keys):
-        LOG.info(f'{gone_keys=}')
-        LOG.info(f'{self.poly_pub_dic=}')
-        LOG.info(f'{self.shape_dic=}')
-        LOG.info(f'{self.poly_dic=}')
+    def _mark_gone(self, gone_guid):
+        """add a gone multistep line Xing the shape"""
         new_gones = {}
-        for poly_key in self.poly_dic.keys():
-            LOG.info(f'checking {poly_key=}')
-            if self.is_poly_key_gone(poly_key):
-                continue
-            for gone_key in gone_keys:
+        gone_keys = self.poly_pub_dic.get(gone_guid)
+        if gone_keys is None:
+            LOG.warning(f'{gone_guid=} {self.poly_pub_dic=}')
+        for poly_key, poly in self.poly_dic.items():
+            LOG.debug('checking %s', poly_key)
+            for gone_key in gone_keys or []:
+                LOG.info(f'checking {gone_key=}')
                 if gone_key in poly_key:
+                    LOG.info(f'match: {gone_key=} {self.shape_dic=} {poly_key=}')
                     shape = self.shape_dic[gone_key]
                     key, gone = self.mark_gone(shape, poly_key)
                     new_gones[key] = gone
+                else:
+                    LOG.info(f'no match, add to new dic {gone_key=} {poly_key=} {poly=}')
+        # add new gone markers to the displayable polygons dic so plotlib will show them
+        LOG.info(f'{new_gones=}')
         for key, value in new_gones.items():
             self.poly_dic[key] = value
+        LOG.debug('poly_dic: ' % self.poly_dic)
 
-    def do_mark_gone(self, p_reader):
+    def mark_reader_gone(self, p_reader, guid):
         """update status and mark shape gone"""
         handles = p_reader.matched_publications
-        LOG.info(f'{handles=} {str(handles)=}')
-        handles_set = {str(handle) for handle in handles}
-        missing_handle_set = self.handles_set - handles_set
-        LOG.info(f'{missing_handle_set=} {handles_set=} {self.handles_set=}')
-        if len(missing_handle_set):
-            for missing_handle in missing_handle_set:
-                self._mark_gone(self.poly_pub_dic[missing_handle])
-                LOG.info('missing in set')
-        for handle in handles:
-            if not p_reader.is_matched_publication_alive(handle):
-                self._mark_gone(self.poly_pub_dic[handle])
-                LOG.info('missing in handle')
-            else:
-                LOG.info(f'ALIVE {handle=}')
-        self.handles_set -= missing_handle_set
-
-    def do_mark_back(self, p_reader):
-        LOG.info('TBD')
-        # TODO - mark this as back to life
+        LOG.info(f'{handles=} {str(handles)=}, {guid=}')
+        self._mark_gone(guid)
 
     def handle_samples(self, reader, which):
         """get samples and handle each"""
 
-        LOG.debug('START cntr: %d', self.sample_counter)
+        LOG.debug('START cntr: %s', self.sample_counter)
         for data, info in reader.take():
             if info.valid:
-                LOG.info('sample:%s', data)
+                LOG.debug('sample:%s', data)
                 self.handle_one_sample(
                     which,
                     info.reception_sequence_number.value,
@@ -229,5 +232,4 @@ class ConnextSubscriber(Connext):
         last image received and draws it"""
         for which, reader in self.reader_dic.items():
             self.handle_samples(reader, which)
-
         return self.poly_dic.values()  # give back the updated values so they are rendered

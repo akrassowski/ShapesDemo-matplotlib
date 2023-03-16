@@ -24,15 +24,14 @@ try:
         matplotlib.use('Qt5Agg')  # must precede pyplot
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
-    from matplotlib.lines import Line2D
     from matplotlib.offsetbox import OffsetImage, AnnotationBbox
     from matplotlib.patches import Circle, Polygon, Rectangle
 except ImportError as exc:
     LOG.fatal("No matplotlib %s", exc)
 
 # space between panels
-HGAP, VGAP = 35, 85
-ZORDER_BASE = 10
+ZORDER_BASE, HGAP, VGAP = 10, 35, 85
+
 
 class Matplotlib:
     """Wrapper to create a graphing environment using the matplotlib library"""
@@ -55,7 +54,7 @@ class Matplotlib:
 
         # add a requested subtitle
         if args.subtitle:
-            font_props = {'backgroundcolor': 'w'}
+            # font_props = {'backgroundcolor': 'w'}
             # text = self.fig.suptitle(args.subtitle, fontproperties=font_props)
             self.fig.suptitle(args.subtitle, backgroundcolor='w')
 
@@ -75,13 +74,13 @@ class Matplotlib:
     def init_set_position(self, position):
         """set the position of the canvas on the screen"""
         mngr = plt.get_current_fig_manager()
-        x, y, dx, dy = mngr.window.geometry().getRect()  # Mac yields: 0, 0, 237, 272 from ShapesDemo.DEFAULTS
+        x, y, dx, dy = mngr.window.geometry().getRect()  # Mac yields: 0, 0, 237, 272 ShapesDemo.DEFAULTS
         LOG.info(f'{x=} {y=} {dx=} {dy=}')
         if isinstance(position, int):  # when passed int, treat it as slot index
             # Compute the Slots when running multiple instances
             row, row2 = VGAP+dy, 2*(dy + VGAP) -30
             cols = [(ix * dx) + HGAP for ix in range(1,5)]
-            # allow for up to 15 slots by index            
+            # allow for up to 15 slots by index
 
             coord = [(0, 0), (cols[0], 0), (cols[1], 0), (cols[2], 0), (cols[3], 0),
                     (0, row), (cols[0], row), (cols[1], row), (cols[2], row), (cols[3], row),
@@ -97,7 +96,7 @@ class Matplotlib:
         mngr.window.setGeometry(x, y, int(dx), int(dy))
 
     def init_show_image(self, image_filename):
-        # set a background image, if provided; imagebox is used to scale when resizing
+        """set a background image, if provided; imagebox is used to scale when resizing"""
         if image_filename:
             image = plt.imread(image_filename)
             imagebox = OffsetImage(image, zoom=0.3, alpha=0.15)
@@ -131,9 +130,15 @@ class Matplotlib:
 
     @staticmethod
     def create_line(endpoints, color, zorder):
-        """@return a 2d line from the pair of endpoints"""
-        line = Line2D(endpoints[0], endpoints[1], color=color, zorder=zorder, lw=2)
+        """@return a Poly line from the pair of endpoints"""
+        # dont use Line2d which is an Artist and cannot be added to poly
+        line = Polygon(endpoints, closed=None, fill=None, color=color, zorder=zorder, lw=1)
         return line
+
+    @staticmethod
+    def get_points(poly):
+        """return the coordinates of the vertices"""
+        return poly.get_xy()
 
     @staticmethod
     def func_animation(fig, callback, interval, blit):
