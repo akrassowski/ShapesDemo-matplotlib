@@ -220,7 +220,7 @@ class Shape():
         fcolor, ecolor = self.face_and_edge_color_code(self.fill, self.color)
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
 
-        LOG.info('ecolor:%s fcolor:%s zorder:%s' % (ecolor, fcolor, self.zorder))
+        # LOG.info('ecolor:%s fcolor:%s zorder:%s' % (ecolor, fcolor, self.zorder))
         poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder+1)
         return poly
 
