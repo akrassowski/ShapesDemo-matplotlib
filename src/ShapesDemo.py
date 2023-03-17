@@ -140,6 +140,8 @@ def main(args):
     # Show the image and block until the window is closed
     matplotlib.plt.show()
     LOG.info("Exiting...")
+    LOG.info(connext_obj.sample_counter)
+  
 
         
 if __name__ == "__main__":

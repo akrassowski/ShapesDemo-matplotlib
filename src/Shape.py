@@ -2,7 +2,6 @@
 """Implements shape class - holds Shape attributes"""
 
 # python imports
-from collections import defaultdict
 import logging
 import math
 from typing import List, Optional, Tuple, Union
@@ -105,8 +104,8 @@ class Shape():
     def gone(self):
         """getter for gone status"""
         return self._gone
-    
-    @gone.setter 
+
+    @gone.setter
     def gone(self, value):
         """setter for gone status"""
         self._gone = value
@@ -117,7 +116,7 @@ class Shape():
         self.xy = x, self.limit_xy[1] - y
         if angle is not None:
             self.angle = angle
-        Shape.shared_zorder += ZORDER_INC 
+        Shape.shared_zorder += ZORDER_INC
         self.zorder = self.shared_zorder
         LOG.debug('zorder:%d', self.zorder)
         self.gone = False
@@ -220,7 +219,7 @@ class Shape():
         poly = self.poly_create_func_dic[self.which]()
         fcolor, ecolor = self.face_and_edge_color_code(self.fill, self.color)
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
-        LOG.info(f'{ecolor=} {fcolor=} {self.zorder=}')
+
         LOG.info('ecolor:%s fcolor:%s zorder:%s' % (ecolor, fcolor, self.zorder))
         poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder+1)
         return poly

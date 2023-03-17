@@ -123,7 +123,7 @@ class ConnextPublisher(Connext):
         which = pub_dic['which']  # only 1 key for now
         #key = self.form_pub_key(which, pub_dic.get('color', 'BLUE'))  # TODO: refactor defaults?
         key = self.form_pub_key(which, pub_dic.get('color'))  # TODO: refactor defaults?
-        self.sample_counter.update([f'{key}w'])
+        self.sample_counter.update([f'{key}-write'])
         sample = self.sample_dic.get(key)
         is_new_sample = sample is None
         if is_new_sample:
