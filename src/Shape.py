@@ -2,7 +2,6 @@
 """Implements shape class - holds Shape attributes"""
 
 # python imports
-from collections import defaultdict
 import logging
 import math
 from typing import List, Optional, Tuple, Union
@@ -105,8 +104,8 @@ class Shape():
     def gone(self):
         """getter for gone status"""
         return self._gone
-    
-    @gone.setter 
+
+    @gone.setter
     def gone(self, value):
         """setter for gone status"""
         self._gone = value
@@ -117,7 +116,7 @@ class Shape():
         self.xy = x, self.limit_xy[1] - y
         if angle is not None:
             self.angle = angle
-        Shape.shared_zorder += ZORDER_INC 
+        Shape.shared_zorder += ZORDER_INC
         self.zorder = self.shared_zorder
         LOG.debug('zorder:%d', self.zorder)
         self.gone = False
@@ -125,7 +124,7 @@ class Shape():
     def get_sequence_number(self) -> int:
         """getter for sequence number"""
         return self.seq
-    
+
     def reverse_if_wall(self, delta_xy: List[int]) -> Tuple[List[int], List[int]]:
         """helper to compute new xy coordinate and delta"""
         new_pos = [self.xy[ix] + delta_xy[ix] for ix in range(2)]
@@ -220,7 +219,6 @@ class Shape():
         poly = self.poly_create_func_dic[self.which]()
         fcolor, ecolor = self.face_and_edge_color_code(self.fill, self.color)
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
-        LOG.info(f'{ecolor=} {fcolor=} {self.zorder=}')
         LOG.info('ecolor:%s fcolor:%s zorder:%s' % (ecolor, fcolor, self.zorder))
         poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder+1)
         return poly

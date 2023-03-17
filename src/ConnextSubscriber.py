@@ -125,16 +125,15 @@ class ConnextSubscriber(Connext):
         """update the poly_dic with fresh shape info"""
         ## create/update a matplotlib polygon from the sample data, add to poly_dic
         ## remove the prior poly's edge
-        self.sample_counter.update([f'{which}r'])
-        #LOG.warning(self.sample_counter[f'{which}r'])
+        self.sample_counter.update([f'{which}-read'])
         instance_gen_key = self.form_poly_key(which, data.color)
         #LOG.info('sample:%s', data)
         inst = self.instance_gen_dic.get(instance_gen_key)
         if inst:  # same key for shape
             shape = self.shape_dic[instance_gen_key]
-            #LOG.info('update:%s', data)
             if shape.gone:
-                LOG.info(f'{self.poly_dic.keys()=}')
+                # on update of a sample for a Gone instance, remove all the Xs
+                # Alternatively, recode to remove each instance's one-at-a-time like ShapesDemoJ does
                 gone_keys = [key for key in self.poly_dic if instance_gen_key in key]
                 for key in gone_keys:
                     del self.poly_dic[key]
@@ -202,7 +201,7 @@ class ConnextSubscriber(Connext):
         LOG.info(f'{new_gones=}')
         for key, value in new_gones.items():
             self.poly_dic[key] = value
-        LOG.debug('poly_dic: ' % self.poly_dic)
+        LOG.debug('poly_dic: %s' % self.poly_dic)
 
     def mark_reader_gone(self, p_reader, guid):
         """update status and mark shape gone"""
@@ -213,7 +212,6 @@ class ConnextSubscriber(Connext):
     def handle_samples(self, reader, which):
         """get samples and handle each"""
 
-        LOG.debug('START cntr: %s', self.sample_counter)
         for data, info in reader.take():
             if info.valid:
                 LOG.debug('sample:%s', data)

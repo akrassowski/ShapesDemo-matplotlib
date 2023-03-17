@@ -99,7 +99,7 @@ class Connext(ABC):
         return dds.QosProvider(qos_file, f'{self.args.qos_lib}::{self.args.qos_profile}')
 
     @staticmethod
-    def _get_size_and_center(points):
+    def _get_center(points):
         min_x = max_x = points[0][0]
         min_y = max_y = points[0][1]
         num_points = len(points)
@@ -112,8 +112,8 @@ class Connext(ABC):
                 max_y = y if y > max_y else max_y
                 LOG.info(f'{min_x=} {min_y=} {max_x=} {max_y=}')
             size = int(max_x - min_x)
-            return size, (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
-        raise NotImplementedError("add triangle, circle")
+            return (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
+        raise NotImplementedError("add circle")
 
     def possibly_log_qos(self, entity):
         """log the qos at selected log level on its own"""
@@ -127,36 +127,15 @@ class Connext(ABC):
         """return the formed key for a gone item"""
         return f'{poly_key}-{self.GONE}'
 
-    def _mark(self, shape, poly_key, char):
+    def _mark(self, shape, poly_key, the_char):
         """helper to mark or unmark the state with the passed character"""
-        LOG.info(f'{poly_key=} {shape=} {char=}')
+        LOG.info(f'{poly_key=} {shape=} {the_char=}')
         poly = self.poly_dic[poly_key]
-        zorder = poly.zorder + 1
-        if shape.which == 'C':
-            x, y = poly.center
-        else:
-            points = poly.get_xy() if shape.which == 'C' else poly.get_xy()
-            LOG.info(f'{poly=} {points=}')
-            _, x, y = self._get_size_and_center(points)
-        LOG.info(f'{x=} {y=}')
-        _, edge_color = shape.face_and_edge_color_code(shape.fill, shape.color)
-        return self._mark_line((x, y), shape, poly_key, edge_color, zorder)
-
-    """def _mark_char(self, center, char, shape, poly_key, color, zorder):
-        fontsize = (shape.size if char == "?" else shape.size*2)
-        x, y = center
-        if shape.which == 'T':
-            fontsize = int(fontsize * 0.7)
-            y -= shape.size * 0.45
-        #weight = 'bold' if char == "?" else 'normal'
-        key = self.form_gone_key(poly_key)
-        text_shape = self.matplotlib.axes.text(  #self.matplotlib.fig.text(...) didn't show up
-            x, y, char, ha='center', va='center',
-            color=color, fontsize=fontsize, zorder=zorder,
-            rotation=(0 if shape.angle is None else shape.angle)
-        )
-        LOG.info(f'{text_shape}')
-        return key, text_shape"""
+        zorder = poly.zorder + 1  # ensure drawn over shape
+        center = poly.center if shape.which == 'C' else self._get_center(poly.get_xy())
+        if the_char.upper() == 'X':
+            return self._mark_line(center, shape, poly_key, zorder)
+        raise NotImplementedError(f'non-X mark: {the_char}')
 
     def _get_points(self, center, shape, poly_key):
         """helper to get the vertices of the X"""
@@ -179,12 +158,13 @@ class Connext(ABC):
             endpoints = [[lt_x, tp_y], [rt_x, bt_y], center, [rt_x, tp_y], [lt_x, bt_y]]
         return endpoints
 
-    def _mark_line(self, center, shape, poly_key, color, zorder=None, clear=False):
+    def _mark_line(self, center, shape, poly_key, zorder):
         """Mark an X as a multi-step line"""
+        _, edge_color = shape.face_and_edge_color_code(shape.fill, shape.color)
         endpoints = self._get_points(center, shape, poly_key)
         key = self.form_gone_key(poly_key)
-        line = self.matplotlib.create_line(endpoints, color=color, zorder=zorder)
-        LOG.info(f'{key=} {endpoints=} {color=} {zorder=} {line=}')
+        line = self.matplotlib.create_line(endpoints, color=edge_color, zorder=zorder)
+        LOG.debug(f'{key=} {endpoints=} {edge_color=} {zorder=} {line=}')
         self.matplotlib.axes.add_patch(line)
         return key, line
 
@@ -200,15 +180,6 @@ class Connext(ABC):
             fstr += ' {self.poly_dic[poly_key].get_xy()=}'
         LOG.info(fstr)
         return self._mark(shape, poly_key, "x")
-
-    def mark_clear(self, shape, poly_key):
-        """clear any mark"""
-        shape.gone = False
-        LOG.info(f'{poly_key=} {shape.xy=} {self.poly_dic[poly_key].get_xy()=}')
-        return self._mark(shape, poly_key, " ")
-
-    def is_poly_key_gone(self, poly_key):
-        return self.GONE in poly_key
 
     #  @abstractmethod
     def draw(self, _):
