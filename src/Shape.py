@@ -124,7 +124,7 @@ class Shape():
     def get_sequence_number(self) -> int:
         """getter for sequence number"""
         return self.seq
-
+    
     def reverse_if_wall(self, delta_xy: List[int]) -> Tuple[List[int], List[int]]:
         """helper to compute new xy coordinate and delta"""
         new_pos = [self.xy[ix] + delta_xy[ix] for ix in range(2)]
@@ -219,6 +219,7 @@ class Shape():
         poly = self.poly_create_func_dic[self.which]()
         fcolor, ecolor = self.face_and_edge_color_code(self.fill, self.color)
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
+
         LOG.info('ecolor:%s fcolor:%s zorder:%s' % (ecolor, fcolor, self.zorder))
         poly.set(ec=ecolor, fc=fcolor, hatch=hatch, zorder=self.zorder+1)
         return poly

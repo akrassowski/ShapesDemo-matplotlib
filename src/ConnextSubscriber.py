@@ -211,7 +211,6 @@ class ConnextSubscriber(Connext):
 
     def handle_samples(self, reader, which):
         """get samples and handle each"""
-
         for data, info in reader.take():
             if info.valid:
                 LOG.debug('sample:%s', data)
