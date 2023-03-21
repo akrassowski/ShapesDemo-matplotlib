@@ -76,8 +76,8 @@ class ArgParser:
             help='Print the publish and subscribe config dictionaries and exit')
         parser.add_argument('--domain_id', '-d', type=int, default=self.default_dic['DOMAIN_ID'],
             help="Specify Domain number 0-122 [default['DOMAIN_ID']")
-        parser.add_argument('--extended', action=argparse.BooleanOptionalAction,
-            help='Use ShapeTypeExtended for all shapes [ShapeType]')
+        parser.add_argument('--ShapeType', action='store_true', default=True, dest='extended',
+            help='Use ShapeType (not ShapeTypeExtended) for all shapes [ShapeTypeExtended]')
         parser.add_argument('-f', '--figure_xy', default=(self.default_dic['FIG_XY']),
             nargs=2, metavar=('x', 'y'), type=float,
             help=("Specify the width and height of the figure in inches as two floats " +
@@ -111,7 +111,7 @@ class ArgParser:
             help='Provide a subtitle to the widget [""]')
         parser.add_argument('--title', '-t', type=str, default=self.default_dic['TITLE'],
             help=f"Provide a title to the widget [{self.default_dic['TITLE']}]")
-        parser.add_argument('--ticks', action=argparse.BooleanOptionalAction,
+        parser.add_argument('--ticks', action='store_true', default=False,
             help='Show tick marks on axes [False]')
 
         parser.add_argument('--subscribe', '-sub', type=validate_shape_letters, default="S",

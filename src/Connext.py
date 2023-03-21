@@ -160,7 +160,7 @@ class Connext(ABC):
 
     def _mark_line(self, center, shape, poly_key, zorder):
         """Mark an X as a multi-step line"""
-        _, edge_color = shape.face_and_edge_color_code(shape.fill, shape.color)
+        _, edge_color = shape.face_and_edge_color_code()
         endpoints = self._get_points(center, shape, poly_key)
         key = self.form_gone_key(poly_key)
         line = self.matplotlib.create_line(endpoints, color=edge_color, zorder=zorder)

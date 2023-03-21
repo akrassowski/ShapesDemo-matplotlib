@@ -22,7 +22,6 @@ from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 from Connext import Connext
 from Shape import Shape
-## nope - circular!  TODO: fix from ShapesDemo import DEFAULT_DIC
 
 LOG = logging.getLogger(__name__)
 
@@ -190,9 +189,9 @@ class ConnextPublisher(Connext):
 
     def __repr__(self):
         text = (f'<ConnextPublisher:\n' +
-                 '  pub_config_list: {self.pub_config_list}\n' +
-                 '  shapes: {self.shape_dic}\n' +
-                 '  samples: {self.sample_dic}\n{self.writer_dic=}')
+                f'  pub_config_list: {self.pub_config_list}\n' +
+                f'  shapes: {self.shape_dic}\n' +
+                f'  samples: {self.sample_dic}\n{self.writer_dic=}')
         #self.publisher = dds.Publisher(self.participant_with_qos)
         #self.pub_key_count = 1
         return f'{text}> '

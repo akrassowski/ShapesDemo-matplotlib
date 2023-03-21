@@ -60,7 +60,7 @@ class Matplotlib:
 
         # hide the axis ticks/subticks/labels
         self.axes.use_sticky_edges = False
-        if args.ticks:
+        if 1 == 0:  # args.ticks:
             self.fig.set_figwidth(args.figure_xy[0]*1.3)
         else:
             self.axes.get_xaxis().set_visible(False)
@@ -73,8 +73,21 @@ class Matplotlib:
 
     def init_set_position(self, position):
         """set the position of the canvas on the screen"""
-        mngr = plt.get_current_fig_manager()
-        x, y, dx, dy = mngr.window.geometry().getRect()  # Mac yields: 0, 0, 237, 272 ShapesDemo.DEFAULTS
+
+        def generic_set_position(figure, x, y):
+            """straddle different backends"""
+            backend = matplotlib.get_backend()
+            if backend == 'TkAgg':
+                figure.canvas.manager.window.wm_geometry("+%d+%d" % (x, y))
+            elif backend == 'WXAgg':
+                figure.canvas.manager.window.SetPosition((x, y))
+            else:
+                # This works for QT and GTK
+                # You can also use window.setGeometry
+                figure.canvas.manager.window.move(x, y)
+        
+        x, y, dx, dy = 0, 0, 237, 272
+        #x, y, dx, dy = mngr.window.geometry().getRect()  # Mac yields: 0, 0, 237, 272 ShapesDemo.DEFAULTS
         LOG.info(f'{x=} {y=} {dx=} {dy=}')
         if isinstance(position, int):  # when passed int, treat it as slot index
             # Compute the Slots when running multiple instances
@@ -93,7 +106,8 @@ class Matplotlib:
             x, y = position
         else:
             raise ValueError(f'Position parameter must be int or x,y coord not {position}')
-        mngr.window.setGeometry(x, y, int(dx), int(dy))
+        generic_set_position(self.fig, x, y)
+        #mngr.window.setGeometry(x, y, int(dx), int(dy))
 
     def init_show_image(self, image_filename):
         """set a background image, if provided; imagebox is used to scale when resizing"""

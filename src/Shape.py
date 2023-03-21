@@ -49,8 +49,8 @@ class Shape():
 
     # pylint: disable=too-many-arguments
     def __init__(self, matplotlib: Matplotlib, seq: int, which: str,
-                 color: str, xy: Tuple[int, int], size: int,
-                 angle: Optional[float]=None, fill: Optional[int]=None) -> None:
+            color: str, xy: Tuple[int, int], size: int, pub: Optional[bool]=False,
+            angle: Optional[float]=None, fill: Optional[int]=None) -> None:
         """generic constructor"""
         assert which in 'CST', f'shape must be one of CST not {which}'
         self.zorder = self.shared_zorder + ZORDER_INC
@@ -69,6 +69,7 @@ class Shape():
         #self.xy = xy[0], self.matplotlib.flip_y(xy[1])  # use flip consistently? breaks tests
         self.size = int(round(size / 2))  ## RTI ShapesDemo: top-to-bottom, MPL: radius
         self.angle, self.fill = angle, fill
+        self.pub = pub
         LOG.info('created self=%s', self)
 
     # pylint: disable=too-many-arguments
@@ -96,6 +97,7 @@ class Shape():
             color=sample.color,
             xy=(sample.x, sample.y),
             size=sample.shapesize,
+            pub=True,
             angle=sample.angle if extended else None,
             fill=sample.fillKind if extended else None
         )
@@ -191,15 +193,17 @@ class Shape():
             points = self._rotate(points, self.angle * PI / 180)
         return points
 
-    @staticmethod
-    def face_and_edge_color_code(fill: Optional[int], color: str) -> Tuple[str, str]:
+    def face_and_edge_color_code(self):
         """compte the edge and face color from the fill and color"""
-        if fill:
+        #  matplotlib will set hatch to black if edge is set to black, so we cannot match Java Shapes
+        if self.fill:
             fcolor = COLOR_MAP['WHITE']
-            ecolor = COLOR_MAP[color]
+            ecolor = COLOR_MAP[self.color]
         else:
-            fcolor = COLOR_MAP[color]
-            ecolor = COLOR_MAP['RED'] if color == 'BLUE' else COLOR_MAP['BLUE']
+            fcolor = COLOR_MAP[self.color]
+            ecolor = COLOR_MAP['RED'] if self.color == 'BLUE' else COLOR_MAP['BLUE']
+            if self.pub:
+                ecolor = COLOR_MAP['BLACK']
         return fcolor, ecolor
 
     def create_circle(self):
@@ -217,7 +221,7 @@ class Shape():
     def create_poly(self):
         """create a matplot polygon"""
         poly = self.poly_create_func_dic[self.which]()
-        fcolor, ecolor = self.face_and_edge_color_code(self.fill, self.color)
+        fcolor, ecolor = self.face_and_edge_color_code()
         hatch = HATCH_MAP[0] if self.fill is None else HATCH_MAP[self.fill]
 
         # LOG.info('ecolor:%s fcolor:%s zorder:%s' % (ecolor, fcolor, self.zorder))
@@ -228,6 +232,8 @@ class Shape():
         text = ('Shape:<'
                 f'{self.which} seq:{self.seq} {self.xy} {self._gone} '
                 f'{self.size} {self.color} Z:{self.zorder}')
+        if self.pub:
+            text += ' pub'
         if self.fill:
             text += f' fill:{self.fill}'
         if self.angle:
