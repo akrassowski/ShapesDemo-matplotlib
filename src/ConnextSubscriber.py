@@ -66,7 +66,7 @@ class ConnextSubscriber(Connext):
 
     def _init_content_filter_xy(self, topic, which, cfxy):
         """handle filter region with top-left and bottom-right specified"""
-        hatch_pattern = { 'c': 'o', 'T': '/', 'S': '+'}
+        hatch_pattern = { 'C': 'o', 'T': '/', 'S': '+' }
         expr = "x >= %0 AND y >= %1 AND x <= %2 and y <= %3"
         params = [str(n) for sublist in cfxy for n in sublist]
         topic = dds.ContentFilteredTopic(topic, f"CFTxy-{which}", dds.Filter(expr, params))

@@ -76,8 +76,10 @@ class ArgParser:
             help='Print the publish and subscribe config dictionaries and exit')
         parser.add_argument('--domain_id', '-d', type=int, default=self.default_dic['DOMAIN_ID'],
             help="Specify Domain number 0-122 [default['DOMAIN_ID']")
-        parser.add_argument('--ShapeType', action='store_true', default=True, dest='extended',
+        parser.add_argument('--ShapeType', action='store_false', dest='extended',
             help='Use ShapeType (not ShapeTypeExtended) for all shapes [ShapeTypeExtended]')
+        parser.add_argument('--ShapeTypeExtended', action='store_true', default=True, dest='extended',
+            help='Use ShapeTypeExtended for all shapes [ShapeTypeExtended]')
         parser.add_argument('-f', '--figure_xy', default=(self.default_dic['FIG_XY']),
             nargs=2, metavar=('x', 'y'), type=float,
             help=("Specify the width and height of the figure in inches as two floats " +
@@ -111,8 +113,13 @@ class ArgParser:
             help='Provide a subtitle to the widget [""]')
         parser.add_argument('--title', '-t', type=str, default=self.default_dic['TITLE'],
             help=f"Provide a title to the widget [{self.default_dic['TITLE']}]")
-        parser.add_argument('--ticks', action='store_true', default=False,
+
+        # support boolean args for python <3.9
+        parser.add_argument('--ticks', action='store_true',
             help='Show tick marks on axes [False]')
+        parser.add_argument('--no-ticks', dest='ticks', action='store_false',
+            help='Do not show tick marks on axes.')
+        parser.set_defaults(ticks=False)
 
         parser.add_argument('--subscribe', '-sub', type=validate_shape_letters, default="S",
             help='Start a simple subscriber to any or all of Circle, Square, Triangle [S]')

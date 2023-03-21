@@ -32,9 +32,10 @@ class Test(unittest.TestCase):
         args = self.parser.parse_args([])
         self.assertEqual(args.index, None)
         self.assertEqual(args.position, 1)
-        self.assertEqual(bool(args.extended), False)
+        self.assertEqual(bool(args.extended), True)
         self.assertEqual(args.subscribe, 'S')
         self.assertEqual(args.publish, None)
+        self.assertFalse(self.matplotlib.axes.get_xaxis().get_visible())
 
     def test_publish_triangle(self):
         cmdline = ['--publish', 't']

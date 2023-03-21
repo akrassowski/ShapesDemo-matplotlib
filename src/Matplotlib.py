@@ -58,9 +58,11 @@ class Matplotlib:
             # text = self.fig.suptitle(args.subtitle, fontproperties=font_props)
             self.fig.suptitle(args.subtitle, backgroundcolor='w')
 
+        # if args.graph_text:  # TODO: list of xy and Text to place on graph in bkgnd
+
         # hide the axis ticks/subticks/labels
         self.axes.use_sticky_edges = False
-        if 1 == 0:  # args.ticks:
+        if args.ticks:
             self.fig.set_figwidth(args.figure_xy[0]*1.3)
         else:
             self.axes.get_xaxis().set_visible(False)
