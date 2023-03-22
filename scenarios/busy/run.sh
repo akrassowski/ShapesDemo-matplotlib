@@ -55,7 +55,4 @@ ${EXE} "${FLAGS[@]}" &
 FLAGS=(${COMMON} --subtitle 'Triangles Top' --index 15 --config filter_triangle_top.cfg)
 ${EXE} "${FLAGS[@]}" &
 
-echo "Use pkill Python to kill all Python subscribers (and all other Python!)"
-echo Command is queued, just hit y to stop
-read -p "Hit any key to kill all Python processes" -n 1 yn
-pkill Python
+../stop.sh

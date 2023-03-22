@@ -50,9 +50,5 @@ FLAGS=(--title "All Domain:${DOMAIN}" ${COMMON} ${BOTTOM_ROW} ${RIGHT} --index 1
 ${EXE} "${FLAGS[@]}" &
 
 
-echo "Use pkill Python to kill all Python subscribers (and all other Python!)"
-echo Command is queued, just hit y to stop
-read -p "Hit any key to kill all Python processes" -n 1 yn
-pkill Python
-
+${TOP_DIR}/scenarios/stop.sh
 
