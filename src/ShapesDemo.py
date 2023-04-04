@@ -12,6 +12,7 @@
 
 # python imports
 import logging
+import os.path
 import sys
 import textwrap
 
@@ -49,6 +50,7 @@ PUB_EXAMPLE = textwrap.dedent("""
           "size": 30,
           "fill": 2,
           "xy": [80, 10],
+          "angle": 2,
           "delta_angle": 5,
           "delta_xy": [4, 5]
         },
@@ -90,8 +92,8 @@ def handle_config_help_and_exit():
     sub_dic_defaults, sub_dic_help = parser.get_sub_config(True)
     _print_defaults('Subscriber values and [default]:', sub_dic_defaults, sub_dic_help)
     _print_defaults('Publisher values and [default]:', pub_dic_defaults, pub_dic_help)
-    print(f'{EXAMPLE_INTRO} publishing instance: {PUB_EXAMPLE}\n'
-          f'{EXAMPLE_INTRO} subscribing instance: {SUB_EXAMPLE}')
+    print(f'{EXAMPLE_INTRO}publishing instance: {PUB_EXAMPLE}\n'
+          f'{EXAMPLE_INTRO}subscribing instance: {SUB_EXAMPLE}')
     sys.exit(0)
 
 def get_connext_obj_or_die(matplotlib, args):
@@ -118,6 +120,9 @@ def main(args):
     #cwd = os.path.dirname(os.path.realpath(__file__))
     cwd = get_cwd(__file__)
     image_filename = f'{cwd}/RTI_Logo_RGB-Color.png'
+    if not os.path.exists(image_filename):
+        LOG.warning(f"Image file '{image_filename}' missing; no background art will be used.")
+        image_filename = None
 
     args.box_title = (f"Shapes Domain:{args.domain_id}"
         if args.title == DEFAULT_DIC['TITLE'] else args.title)
