@@ -16,6 +16,7 @@ import logging
 
 # Connext imports
 import rti.connextdds as dds
+from connext import possibly_log_qos
 
 LOG = logging.getLogger(__name__)
 
@@ -40,15 +41,10 @@ class ShapeListener(dds.NoOpDataReaderListener):
 
     listener_called = False  # TODO test me
 
-    def possibly_log_qos(self, entity):
-        """log the qos at selected level on its own"""
-        if self.args.log_qos:
-            LOG.log(self.args.log_qos, '\n' + entity.qos.to_string())
-
     # pylint: disable=line-too-long, unused-argument
     def on_requested_deadline_missed(self, reader: dds.DataReader, status: dds.RequestedDeadlineMissedStatus):
         LOG.warning("Deadline missed")
-        self.possibly_log_qos(reader)
+        possibly_log_qos(self.args.log_qos, reader)
 
     def on_sample_rejected(self, reader: dds.DataReader, status: dds.SampleRejectedStatus):
         LOG.warning("Sample rejected")
@@ -61,11 +57,11 @@ class ShapeListener(dds.NoOpDataReaderListener):
 
     def on_subscription_matched(self, reader: dds.DataReader, status: dds.SubscriptionMatchedStatus):
         LOG.warning("Subscription matched")
-        self.possibly_log_qos(reader)
+        possibly_log_qos(self.args.log_qos, reader)
 
     def on_liveliness_changed(self, reader: dds.DataReader, status: dds.LivelinessChangedStatus):
         LOG.warning("Liveliness changed")
-        self.possibly_log_qos(reader)
+        possibly_log_qos(self.args.log_qos, reader)
 
     def get_mask(self):
         """return the mask for all the handlers"""

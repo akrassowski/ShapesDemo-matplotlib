@@ -20,7 +20,7 @@ import rti.connextdds as dds
 # The generated <datatype>.py class file should be included here
 from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
-from connext import Connext
+from connext import Connext, possibly_log_qos
 from shape import Shape
 
 LOG = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class ConnextPublisher(Connext):
         LOG.info('args=%s config_list=%s', args, config_list)
         #writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
         self.publisher = dds.Publisher(self.participant_with_qos)
-        self.possibly_log_qos(self.publisher)
+        possibly_log_qos(self.args.log_qos, self.publisher)
         ##self.pub_dic_list = []  # defaults will be keyd by just shape; actual will be shape-color
         self.shape_dic = {}  # which: Shape
         self.sample_dic = {}  # which-color: latest-published-sample
@@ -82,7 +82,7 @@ class ConnextPublisher(Connext):
             LOG.info(f'{config_list=}')
             key = config['which']
             self.writer_dic[key] = dds.DataWriter(self.publisher, self.stopic_dic[key], self.rw_qos_provider.datawriter_qos)
-            self.possibly_log_qos(self.writer_dic[key])
+            possibly_log_qos(self.args.log_qos, self.writer_dic[key])
         self.pub_config_list = config_list
         LOG.debug(f'ConnextPublisher starting: pub_config_list: {pformat(self.pub_config_list)} {self.writer_dic=}')
 
@@ -169,7 +169,7 @@ class ConnextPublisher(Connext):
             self.matplotlib.axes.add_patch(poly)
         shape.set_poly_center(poly, which, points)
         # update the plot
-        poly.set(lw=self.THIN_EDGE_LINE_WIDTH, zorder=shape.zorder)
+        poly.set(lw=self.matplotlib.THIN_EDGE_LINE_WIDTH, zorder=shape.zorder)
 
     def adjust_zorder(self, limit=500):
         """Periodically, reset the zorder to prevent runaway growth"""

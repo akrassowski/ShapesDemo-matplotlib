@@ -18,7 +18,7 @@ import logging
 # Connext imports
 import rti.connextdds as dds
 
-from connext import Connext
+from connext import Connext, possibly_log_qos
 from instance_gen import InstanceGen
 from shape import Shape, COLOR_MAP
 from shape_listener import ShapeListener
@@ -35,7 +35,7 @@ class ConnextSubscriber(Connext):
         self.reader_dic = {}  # one reader per Shape key: CST values: dds.DataReader
         self.poly_pub_dic = defaultdict(list)  # key: pubHandle values: [poly_key1, poly_key2...]
         self.subscriber = dds.Subscriber(self.participant_with_qos)
-        self.possibly_log_qos(self.subscriber)
+        possibly_log_qos(self.args.log_qos, self.subscriber)
         reader_qos = self.qos_provider.datareader_qos
 
         listener = ShapeListener(args)
@@ -50,7 +50,7 @@ class ConnextSubscriber(Connext):
                 listener,
                 status_mask
             )
-            self.possibly_log_qos(self.reader_dic[which])
+            possibly_log_qos(self.args.log_qos, self.reader_dic[which])
 
     def _init_get_topic(self, which, config):
         """get a Content Filtered or normal Topic"""
@@ -147,7 +147,7 @@ class ConnextSubscriber(Connext):
                 return  # history depth of 1, so nothing else to do
             prev_poly = self.poly_dic.get(prev_poly_key)
             if prev_poly:
-                prev_poly.set(lw=self.THIN_EDGE_LINE_WIDTH)
+                prev_poly.set(lw=self.matplotlib.THIN_EDGE_LINE_WIDTH)
 
         ## create/update a matplotlib polygon from the sample data, add to poly_dic
         ## remove the prior poly's edge
@@ -182,7 +182,7 @@ class ConnextSubscriber(Connext):
             self.matplotlib.axes.add_patch(poly)
 
         shape.set_poly_center(poly, which, shape.get_points())
-        poly.set(lw=self.WIDE_EDGE_LINE_WIDTH, zorder=shape.zorder)
+        poly.set(lw=self.matplotlib.WIDE_EDGE_LINE_WIDTH, zorder=shape.zorder)
         _fixup_edges(self, which, shape.color, inst.get_prev_ix(), poly_key) 
 
     def _mark_gone(self, gone_guid):

@@ -35,6 +35,7 @@ ZORDER_BASE, HGAP, VGAP = 10, 35, 85
 
 class Matplotlib:
     """Wrapper to create a graphing environment using the matplotlib library"""
+    WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
 
     def __init__(self, args, image_filename=None):
         """init the figure attributes - some is Mac-specific, some must be done b4 creating fig"""

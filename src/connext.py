@@ -28,11 +28,17 @@ def get_cwd(file):
     """@return fullpath of local file"""
     return os.path.dirname(os.path.realpath(file))
 
+def possibly_log_qos(qos_log_level, entity):
+    """log the qos at selected log level on its own"""
+    if qos_log_level is not None:
+        try:
+            LOG.log(qos_log_level, '\n' + entity.qos.to_string())
+        except AttributeError:
+            LOG.log(qos_log_level, "No qos attribute \n" + entity.to_string())
+
 
 class Connext(ABC):
     """Parent class for ConnextPublisher an ConnextSubscriber"""
-    WIDE_EDGE_LINE_WIDTH, THIN_EDGE_LINE_WIDTH = 2, 1
-    GONE = 'gone'
     poly_dic = {}  # all polygon instances keyed by Topic+Color+InstanceNum and Gone
     sample_counter = Counter()
     participant_qos = dds.QosProvider.default.participant_qos_from_profile(
@@ -42,14 +48,14 @@ class Connext(ABC):
         self.args = args
         self.matplotlib = matplotlib
         self.participant = dds.DomainParticipant(args.domain_id)
-        self.possibly_log_qos(self.participant)
+        possibly_log_qos(self.args.log_qos, self.participant)
 
         self.qos_provider = self.get_qos_provider()
         self.rw_qos_provider = dds.QosProvider(args.qos_file, f'{args.qos_lib}::{args.qos_profile}')
         entity_name = dds.EntityName('EntityNameIsFred')
         entity_name.role_name = 'the role of Fred'
         self.participant_qos.participant_name = entity_name
-        self.possibly_log_qos(self.participant_qos)
+        possibly_log_qos(self.args.log_qos, self.participant_qos)
 
         self.participant_with_qos = dds.DomainParticipant(args.domain_id, self.participant_qos)
         ##self.participant_with_qos = dds.DomainParticipant(args.domain_id, provider)
@@ -82,13 +88,6 @@ class Connext(ABC):
         """@return a key to a polygon; must have instance number to draw (subscriber) history"""
         return f'{which}-{color}' + (f'-{instance_num}' if instance_num else "")
 
-    @staticmethod
-    def crack_poly_key(poly_key):
-        """@return 3 parts of a poly_key: which, color, instance_num"""
-        LOG.info(f'{poly_key=}')
-        result = poly_key.split('-')
-        return result if len(result) == 3 else result + [None]
-
     def get_qos_provider(self):
         """fetch the qos_profile from the lib in the file"""
         cwd = get_cwd(__file__)
@@ -113,18 +112,6 @@ class Connext(ABC):
             size = int(max_x - min_x)
             return (size / 2) + min_x, int((max_y - min_y) / 2) + min_y
         raise NotImplementedError("add circle")
-
-    def possibly_log_qos(self, entity):
-        """log the qos at selected log level on its own"""
-        if self.args.log_qos:
-            try:
-                LOG.log(self.args.log_qos, '\n' + entity.qos.to_string())
-            except AttributeError:
-                LOG.log(self.args.log_qos, "No qos attribute \n" + entity.to_string())
-
-    def form_gone_key(self, poly_key):
-        """return the formed key for a gone item"""
-        return f'{poly_key}-{self.GONE}'
 
     def _mark(self, shape, poly_key, the_char):
         """helper to mark or unmark the state with the passed character"""
@@ -159,9 +146,10 @@ class Connext(ABC):
 
     def _mark_line(self, center, shape, poly_key, zorder):
         """Mark an X as a multi-step line"""
+    
         _, edge_color = shape.face_and_edge_color_code()
         endpoints = self._get_points(center, shape, poly_key)
-        key = self.form_gone_key(poly_key)
+        key = f'{poly_key}-gone'
         line = self.matplotlib.create_line(endpoints, color=edge_color, zorder=zorder)
         LOG.debug(f'{key=} {endpoints=} {edge_color=} {zorder=} {line=}')
         self.matplotlib.axes.add_patch(line)
