@@ -9,7 +9,7 @@ else
 fi
 
 TOP_DIR=`readlink -f ../..`
-EXE=${TOP_DIR}/src/ShapesDemo.py
+EXE=${TOP_DIR}/src/shapes_demo.py
 COMMON="--domain_id $DOMAIN"
 TOP_ROW="--subtitle Legacy --ShapeType"
 BOTTOM_ROW="--subtitle Extended --ShapeTypeExtended"

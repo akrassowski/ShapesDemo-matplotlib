@@ -3,7 +3,7 @@
 
 DOMAIN=27
 
-EXE=../../src/ShapesDemo.py
+EXE=../../src/shapes_demo.py
 COMMON="--domain_id ${DOMAIN} --ShapeTypeExtended --log_level 50 -f 2.375 2.6"
 COMMON="--domain_id ${DOMAIN} --ShapeTypeExtended --log_level 50 -f 2.13 2.44" # works
 #COMMON="--domain_id ${DOMAIN} --ShapeType --index ${SLOT} --log_level 50 -f 2.26 2.47" # checking

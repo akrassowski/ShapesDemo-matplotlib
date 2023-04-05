@@ -39,7 +39,7 @@ DEFAULT_DIC = {
 
 EXAMPLE_INTRO = 'Example JSON config file contents for a '
 PUB_EXAMPLE = textwrap.dedent("""
-    { 
+    {
       "pub": {
         "circle": {
           "delta_xy": [3, 4],
@@ -65,7 +65,7 @@ PUB_EXAMPLE = textwrap.dedent("""
 """)
 
 SUB_EXAMPLE = textwrap.dedent("""
-    { 
+    {
       "sub": {
         "circle": {
           "content_filter_color": "BLUE"
@@ -117,19 +117,15 @@ def main(args):
     """MAIN ENTRY POINT"""
 
     # first, create the plotting environment
-    #cwd = os.path.dirname(os.path.realpath(__file__))
-    cwd = get_cwd(__file__)
-    image_filename = f'{cwd}/RTI_Logo_RGB-Color.png'
+    image_filename = f'{get_cwd(__file__)}/RTI_Logo_RGB-Color.png'
     if not os.path.exists(image_filename):
-        LOG.warning(f"Image file '{image_filename}' missing; no background art will be used.")
+        LOG.warning("Image file %s missing; no background art will be used.", image_filename)
         image_filename = None
 
     args.box_title = (f"Shapes Domain:{args.domain_id}"
         if args.title == DEFAULT_DIC['TITLE'] else args.title)
 
     matplotlib = Matplotlib(args, image_filename)
-        #args.figure_xy, args.graph_xy, image_filename, box_title, args.position, args.subtitle
-    #)
     if args.config_help:
         handle_config_help_and_exit()
 
@@ -141,14 +137,14 @@ def main(args):
         sys.exit(0)
 
     # lower interval if updates are jerky
-    unused_ref = matplotlib.func_animation(matplotlib.fig, connext_obj.draw, interval=args.publish_rate, blit=True)
+    _ = matplotlib.func_animation(matplotlib.fig, connext_obj.draw,
+                                  interval=args.publish_rate, blit=True)
     # Show the image and block until the window is closed
     matplotlib.plt.show()
     LOG.info("Exiting...")
     LOG.info(connext_obj.sample_counter)
-  
 
-        
+
 if __name__ == "__main__":
     p_args = ArgParser(DEFAULT_DIC).parse_args(sys.argv[1:])
     TIME_FMT = '%(asctime)s,%(msecs)03d '

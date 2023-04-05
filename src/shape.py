@@ -18,14 +18,14 @@ from matplotlib.patches import Polygon
 from matplotlib_ import Matplotlib, ZORDER_BASE
 from ShapeTypeExtended import ShapeTypeExtended
 
-"""Interface to App for all things shapey
-   Shape is responsible for:
-     ShapeDemo attributes: color, (x, y), size, fill, angle
-     matplotlib env - fig, axes, patches_list
-     publisher - delta_xy, delta_angle
-     subscriber - pub_handle
-     NOT responsible for the history-depth refs, see ConnextSubscriber for that
-"""
+## Interface to App for all things shapey
+#   Shape is responsible for:
+#     ShapeDemo attributes: color, (x, y), size, fill, angle
+#     matplotlib env - fig, axes, patches_list
+#     publisher - delta_xy, delta_angle
+#     NOT responsible for the history-depth refs, see ConnextSubscriber for that
+#
+## This file had type hints generated then tweaked; not done elsewhere
 
 LOG = logging.getLogger(__name__)
 ZORDER_INC = 2  # allow room for gone line
@@ -190,7 +190,7 @@ class Shape():
 
     def face_and_edge_color_code(self):
         """compte the edge and face color from the fill and color"""
-        #  matplotlib will set hatch to black if edge is set to black, so we cannot match Java Shapes
+        #  matplotlib sets hatch to black if edge is black, so we cannot match Java Shapes
         if self.fill:
             fcolor = COLOR_MAP['WHITE']
             ecolor = COLOR_MAP[self.color]

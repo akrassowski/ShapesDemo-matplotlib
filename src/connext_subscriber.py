@@ -114,7 +114,7 @@ class ConnextSubscriber(Connext):
                 LOG.info(f'TOO GENERAL: {exc=}')
             self.mark_reader_gone(reader, str(info.source_guid))
         if reader.status_changes & dds.StatusMask.LIVELINESS_CHANGED is not None:
-            LOG.warning(f'LIVELINESS CHANGED {reader.liveliness_changed_status.alive_count_change} ')  #{ dir(reader.liveliness_changed_status)=}')
+            LOG.warning(f'LIVELINESS CHANGED {reader.liveliness_changed_status.alive_count_change}')
             LOG.warning(f'LIVELINESS CHANGED {reader.matched_publications=} ')
             ##if reader.liveliness_changed_status.alive_count_change:
                 ##self.do_mark_back(reader)
@@ -123,6 +123,32 @@ class ConnextSubscriber(Connext):
 
     def handle_one_sample(self, which, seq, data, pub_handle):
         """update the poly_dic with fresh shape info"""
+
+        def _create_shape(self, which, instance_gen_key):
+            """helper to create a new shape"""
+            LOG.info(f'{which=} {pub_handle=}')
+            inst = InstanceGen(self.get_max_samples_per_instance(which))
+            self.instance_gen_dic[instance_gen_key] = inst
+            LOG.info(f'ADD {instance_gen_key=} at {pub_handle=}')
+            self.poly_pub_dic[pub_handle].append(instance_gen_key)
+            LOG.info(f'{self.poly_pub_dic[pub_handle]=}')
+            return inst, Shape.from_sub_sample(
+                matplotlib=self.matplotlib,
+                which=which,
+                seq=seq,
+                data=data,
+                extended=self.args.extended
+            )
+        
+        def _fixup_edges(self, which, color, prev_ix, poly_key):
+            """helper to change 2nd instance's edge"""
+            prev_poly_key = self.form_poly_key(which, color, prev_ix)
+            if prev_poly_key == poly_key:
+                return  # history depth of 1, so nothing else to do
+            prev_poly = self.poly_dic.get(prev_poly_key)
+            if prev_poly:
+                prev_poly.set(lw=self.THIN_EDGE_LINE_WIDTH)
+
         ## create/update a matplotlib polygon from the sample data, add to poly_dic
         ## remove the prior poly's edge
         self.sample_counter.update([f'{which}-read'])
@@ -133,28 +159,14 @@ class ConnextSubscriber(Connext):
             shape = self.shape_dic[instance_gen_key]
             if shape.gone:
                 # on update of a sample for a Gone instance, remove all the Xs
-                # Alternatively, recode to remove each instance's one-at-a-time like ShapesDemoJ does
+                # Alternatively, recode to remove instances one-at-a-time like ShapesDemoJ does
                 gone_keys = [key for key in self.poly_dic if instance_gen_key in key]
                 for key in gone_keys:
                     del self.poly_dic[key]
                 LOG.info(f'{gone_keys=}')
             shape.update(data.x, data.y, data.angle if self.args.extended else None)
-            ##if self.sample_counter[f'{which}r'] > 100:
-                ##pass #shape.mark_unknown(self.plt)
         else:
-            LOG.info(f'{which=} {pub_handle=}')
-            inst = InstanceGen(self.get_max_samples_per_instance(which))
-            self.instance_gen_dic[instance_gen_key] = inst
-            LOG.info(f'ADD {instance_gen_key=} at {pub_handle=}')
-            self.poly_pub_dic[pub_handle].append(instance_gen_key)
-            LOG.info(f'{self.poly_pub_dic[pub_handle]=}')
-            shape = Shape.from_sub_sample(
-                matplotlib=self.matplotlib,
-                which=which,
-                seq=seq,
-                data=data,
-                extended=self.args.extended
-            )
+            inst, shape = _create_shape(self, which, instance_gen_key)
         self.shape_dic[instance_gen_key] = shape  # add new or updated shape to dict
         inst_ix = inst.next()
         LOG.debug('SHAPE: shape:%s, inst_ix=%d', shape, inst_ix)
@@ -169,16 +181,9 @@ class ConnextSubscriber(Connext):
             LOG.debug('added poly_key:%s', poly_key)
             self.matplotlib.axes.add_patch(poly)
 
-        points = shape.get_points()
-        shape.set_poly_center(poly, which, points)
+        shape.set_poly_center(poly, which, shape.get_points())
         poly.set(lw=self.WIDE_EDGE_LINE_WIDTH, zorder=shape.zorder)
-
-        prev_poly_key = self.form_poly_key(which, shape.color, inst.get_prev_ix())
-        if prev_poly_key == poly_key:
-            return  # history depth of 1, so nothing else to do
-        prev_poly = self.poly_dic.get(prev_poly_key)
-        if prev_poly:
-            prev_poly.set(lw=self.THIN_EDGE_LINE_WIDTH)
+        _fixup_edges(self, which, shape.color, inst.get_prev_ix(), poly_key) 
 
     def _mark_gone(self, gone_guid):
         """add a gone multistep line Xing the shape"""
@@ -201,7 +206,7 @@ class ConnextSubscriber(Connext):
         LOG.info(f'{new_gones=}')
         for key, value in new_gones.items():
             self.poly_dic[key] = value
-        LOG.debug('poly_dic: %s' % self.poly_dic)
+        LOG.debug('poly_dic: %s', self.poly_dic)
 
     def mark_reader_gone(self, p_reader, guid):
         """update status and mark shape gone"""
