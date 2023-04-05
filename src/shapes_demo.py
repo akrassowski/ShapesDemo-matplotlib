@@ -17,12 +17,12 @@ import sys
 import textwrap
 
 # application imports
-from ArgParser import ArgParser
-from ConfigParser import ConfigParser
-from Connext import get_cwd
-from ConnextPublisher import ConnextPublisher
-from ConnextSubscriber import ConnextSubscriber
-from Matplotlib import Matplotlib
+from arg_parser import ArgParser
+from config_parser import ConfigParser
+from connext import get_cwd
+from connext_publisher import ConnextPublisher
+from connext_subscriber import ConnextSubscriber
+from matplotlib_ import Matplotlib
 
 LOG = logging.getLogger(__name__)
 

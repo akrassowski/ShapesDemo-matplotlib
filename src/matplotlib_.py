@@ -80,17 +80,19 @@ class Matplotlib:
             """straddle different backends"""
             backend = matplotlib.get_backend()
             if backend == 'TkAgg':
-                figure.canvas.manager.window.wm_geometry("+%d+%d" % (x, y))
+                figure.canvas.manager.window.wm_geometry(f"+{x}+{y}")
             elif backend == 'WXAgg':
                 figure.canvas.manager.window.SetPosition((x, y))
             else:
                 # This works for QT and GTK
                 # You can also use window.setGeometry
                 figure.canvas.manager.window.move(x, y)
-        
+
+        # x, y, dx, dy = mngr.window.geometry().getRect()
+        # Mac yields: 0, 0, 237, 272 ShapesDemo.DEFAULTS
         x, y, dx, dy = 0, 0, 237, 272
-        #x, y, dx, dy = mngr.window.geometry().getRect()  # Mac yields: 0, 0, 237, 272 ShapesDemo.DEFAULTS
-        LOG.info(f'{x=} {y=} {dx=} {dy=}')
+        LOG.info('x: %d y: %d dx: %d dy: %d', x, y, dx, dy)
+
         if isinstance(position, int):  # when passed int, treat it as slot index
             # Compute the Slots when running multiple instances
             row, row2 = VGAP+dy, 2*(dy + VGAP) -30
@@ -101,7 +103,7 @@ class Matplotlib:
                     (0, row), (cols[0], row), (cols[1], row), (cols[2], row), (cols[3], row),
                     (0, row2), (cols[0], row2), (cols[1], row2), (cols[2], row2), (cols[3], row2)]
             x, y = coord[position-1]
-            LOG.debug('x=%d, y=%d', x, y)
+            LOG.debug('x:%d y:%d', x, y)
         elif isinstance(position, (list, tuple)):  # when passed pair, treat as x,y
             if len(position) != 2:
                 raise ValueError(f'Position parameter must be of length 2, not {position}')

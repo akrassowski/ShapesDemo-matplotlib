@@ -18,10 +18,10 @@ import logging
 # Connext imports
 import rti.connextdds as dds
 
-from Connext import Connext
-from InstanceGen import InstanceGen
-from Shape import Shape, COLOR_MAP
-from ShapeListener import ShapeListener
+from connext import Connext
+from instance_gen import InstanceGen
+from shape import Shape, COLOR_MAP
+from shape_listener import ShapeListener
 
 LOG = logging.getLogger(__name__)
 

@@ -20,7 +20,6 @@ import os
 
 # Connext imports
 import rti.connextdds as dds
-#from Shape import Shape
 from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
 LOG = logging.getLogger(__name__)

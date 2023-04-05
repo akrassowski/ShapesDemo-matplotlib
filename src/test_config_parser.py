@@ -7,9 +7,9 @@ from pprint import pprint
 import unittest
 from parameterized import parameterized
 
-from ConfigParser import ConfigParser
-from ShapesDemo import DEFAULT_DIC
-from ConnextPublisher import ConnextPublisher
+from config_parser import ConfigParser
+from shapes_demo import DEFAULT_DIC
+from connext_publisher import ConnextPublisher
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(
@@ -247,6 +247,36 @@ class Test(unittest.TestCase):
     def test_normalize_xy_too_many(self):
         with self.assertRaises(ValueError):
             _ = self.parser.normalize_xy('too_many', (1, 2, 3))
+
+class Test_normalize_fill(unittest.TestCase):
+    """Parameter test for normalize_fill functions"""
+    def setUp(self):
+        self.parser = ConfigParser(DEFAULT_DIC)
+
+    @parameterized.expand([
+        [3, 3],
+        ['VERTICAL', 3],
+        ['Solid', 0],
+        ['empty', 1]
+    ])
+
+    def test_normalize_fill(self, param, result):
+        computed = self.parser.normalize_fill(param)
+        self.assertEqual(result, computed)
+
+def test_normalized_fill_error(self):
+        """Ensure bad values raise ValueError"""
+        with self.assertRaises(ValueError):
+            _ = self.parser.normalize_fill("3")
+
+        with self.assertRaises(ValueError):
+            _ = self.parser.normalize_fill(2.2)
+
+        with self.assertRaises(ValueError):
+            _ = self.parser.normalize_fill(-1)
+
+        with self.assertRaises(ValueError):
+            _ = self.parser.normalize_fill(4)
 
 class Test_normalize_shape(unittest.TestCase):
     """Parameter test for normalize_shape functions"""

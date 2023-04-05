@@ -2,7 +2,7 @@
 """Tests for Matplotlib"""
 import unittest
 from unittest.mock import MagicMock
-from Matplotlib import Matplotlib
+from matplotlib_ import Matplotlib
 
 # pylint: disable=missing-function-docstring, too-many-public-methods
 class Test(unittest.TestCase):

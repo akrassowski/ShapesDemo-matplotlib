@@ -48,11 +48,11 @@ class ArgParser:
             return f'{pair[0]} {pair[1]}'
 
         description = textwrap.dedent("""
-            %(prog)s - Alternate Shapes Demo using Connext Python API 
-            Some simple examples: 
-                
+            %(prog)s - Alternate Shapes Demo using Connext Python API
+            Some simple examples:
+
                 %(prog)s --publish S   # Minimal Blue Square publisher
-                
+
                 %(prog)s --subscribe CST   # Minimal subscriber to Circle, Square and Triangle topics
 
             Other behaviors can be specified in the QoS file.
@@ -62,7 +62,7 @@ class ArgParser:
         epilog = textwrap.dedent("""
             Coordinates system has bottom-left=0,0 increasing to the right and up.
             Values are published with the Y-axis values "flipped" so that the Java Shapes Demo can plot them correctly.
-            Subscribers expect Java Shapes Demo values (where Y-axis is inverted). 
+            Subscribers expect Java Shapes Demo values (where Y-axis is inverted).
         """)
 
         parser = argparse.ArgumentParser(
@@ -77,8 +77,8 @@ class ArgParser:
         parser.add_argument('--domain_id', '-d', type=int, default=self.default_dic['DOMAIN_ID'],
             help="Specify Domain number 0-122 [default['DOMAIN_ID']")
         parser.add_argument('--ShapeType', action='store_false', dest='extended',
-            help='Use ShapeType (not ShapeTypeExtended) for all shapes [ShapeTypeExtended]')
-        parser.add_argument('--ShapeTypeExtended', action='store_true', default=True, dest='extended',
+            help='Override and use legacy ShapeType for all shapes [ShapeTypeExtended]')
+        parser.add_argument('--ShapeTypeExtended', action='store_true', dest='extended',
             help='Use ShapeTypeExtended for all shapes [ShapeTypeExtended]')
         parser.add_argument('-f', '--figure_xy', default=(self.default_dic['FIG_XY']),
             nargs=2, metavar=('x', 'y'), type=float,
@@ -97,9 +97,17 @@ class ArgParser:
                   "10:DEBUG, 20:INFO, 30:WARN, 40:ERROR, 50:CRITICAL [20:INFO]"))
         parser.add_argument('--log_qos', default=logging.DEBUG, type=int,
             help="Log the QoS for all participants at the passed log level [10:DEBUG]")
-        parser.add_argument('--position', '-p', default=None, nargs=2, metavar=('x' 'y'), type=int,
+        parser.add_argument('--position', '-p', default=None, nargs=2, metavar=('x', 'y'), type=int,
             help=('Specify the screen position in pixels as two integers\n' +
                   'For simpler slot placement, use --index'))
+        parser.add_argument('--slot_row_column', '-src', nargs=2, metavar=('r', 'c'),
+            type=int, default=None, help=("Specify the slot row and column count, " +
+                  "use slot_index to specify where to run\n" +
+                  "Rows and columns will be fit to screen's height and width"))
+        parser.add_argument('--slot_index', '-si', nargs=2, metavar=('r', 'c'),
+            type=int, default=None,
+            help="Specify the slot row and column index for this instance's slot as two integers")
+
         parser.add_argument('--publish_rate', '-pr', default=20, type=int,
             help='Specify the delay between screen updates in milliseconds [20]')
         parser.add_argument('--qos_file', '-qf', type=str, default=self.default_dic['QOS_FILE'],

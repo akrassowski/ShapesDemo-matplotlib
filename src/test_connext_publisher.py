@@ -3,10 +3,10 @@
 import logging
 import unittest
 from unittest.mock import MagicMock #, patch
-from ArgParser import ArgParser
-from ConfigParser import ConfigParser
-from ConnextPublisher import ConnextPublisher
-from ShapesDemo import DEFAULT_DIC
+from arg_parser import ArgParser
+from config_parser import ConfigParser
+from connext_publisher import ConnextPublisher
+from shapes_demo import DEFAULT_DIC
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(

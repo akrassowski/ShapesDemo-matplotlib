@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+###############################################################################
+# (c) Copyright, Real-Time Innovations, 2021. All rights reserved.            #
+# No duplications, whole or partial, manual or electronic, may be made        #
+# without express written permission.  Any such copies, or revisions thereof, #
+# must display this notice unaltered.                                         #
+# This code contains trade secrets of Real-Time Innovations, Inc.             #
+###############################################################################
 """Implements shape class - holds Shape attributes"""
 
 # python imports
@@ -8,16 +15,8 @@ from typing import List, Optional, Tuple, Union
 
 # application imports
 from matplotlib.patches import Polygon
-from Matplotlib import Matplotlib, ZORDER_BASE
+from matplotlib_ import Matplotlib, ZORDER_BASE
 from ShapeTypeExtended import ShapeTypeExtended
-ZORDER_INC = 2  # allow room for gone line
-###############################################################################
-# (c) Copyright, Real-Time Innovations, 2021. All rights reserved.            #
-# No duplications, whole or partial, manual or electronic, may be made        #
-# without express written permission.  Any such copies, or revisions thereof, #
-# must display this notice unaltered.                                         #
-# This code contains trade secrets of Real-Time Innovations, Inc.             #
-###############################################################################
 
 """Interface to App for all things shapey
    Shape is responsible for:
@@ -28,24 +27,21 @@ ZORDER_INC = 2  # allow room for gone line
      NOT responsible for the history-depth refs, see ConnextSubscriber for that
 """
 
-# Constants outside Object since there's a new MPLShape for each update
-PI = 3.14159
 LOG = logging.getLogger(__name__)
-
-# map the ShapeDemo color to the matplotlib color RGB code
-COLOR_MAP = {
+ZORDER_INC = 2  # allow room for gone line
+COLOR_MAP = {  # map the ShapeDemo color to the matplotlib color RGB code
     'BLACK': 'k', 'WHITE': 'w', 'GREY': '#bebebe', 'GREYx': 'grey',
     'PURPLE': '#c03bff', 'BLUE': '#0632ff', 'RED': '#ff2600', 'GREEN': '#00fa00',
     'YELLOW': '#fffb00', 'CYAN': '#00fdff', 'MAGENTA': '#ff41ff', 'ORANGE': '#ff9500'
 }
 HATCH_MAP = {0: None, 1: None, 2: "--", 3: "||"}
 
+
 # pylint: disable=too-many-instance-attributes
 class Shape():
     """holds shape attributes and helpers"""
     shared_zorder = ZORDER_BASE  # keep zorder at Shape-level and for each instance
     limit_xy, matplotlib, poly_create_func_dic = None, None, None
-    init_once = False
 
     # pylint: disable=too-many-arguments
     def __init__(self, matplotlib: Matplotlib, seq: int, which: str,
@@ -55,7 +51,7 @@ class Shape():
         assert which in 'CST', f'shape must be one of CST not {which}'
         self.zorder = self.shared_zorder + ZORDER_INC
         self._gone = False
-        if not self.init_once:
+        if not self.matplotlib:  # use matplotlib as a init-once gate
             self.matplotlib = matplotlib
             self.limit_xy = int(matplotlib.axes.get_xlim()[1]), int(matplotlib.axes.get_ylim()[1])
             self.poly_create_func_dic = {
@@ -126,7 +122,7 @@ class Shape():
     def get_sequence_number(self) -> int:
         """getter for sequence number"""
         return self.seq
-    
+
     def reverse_if_wall(self, delta_xy: List[int]) -> Tuple[List[int], List[int]]:
         """helper to compute new xy coordinate and delta"""
         new_pos = [self.xy[ix] + delta_xy[ix] for ix in range(2)]
@@ -189,8 +185,7 @@ class Shape():
             ]
 
         if self.angle is not None:
-            #LOG.info(f'ROTATING: {self.angle=}')
-            points = self._rotate(points, self.angle * PI / 180)
+            points = self._rotate(points, self.angle * math.pi / 180)
         return points
 
     def face_and_edge_color_code(self):

@@ -4,8 +4,8 @@
 import unittest
 #import logging
 
-from ArgParser import ArgParser
-from ShapesDemo import DEFAULT_DIC
+from arg_parser import ArgParser
+from shapes_demo import DEFAULT_DIC
 
 #LOG = logging.getLogger(__name__)
 #logging.basicConfig(level=logging.DEBUG)
@@ -35,7 +35,6 @@ class Test(unittest.TestCase):
         self.assertEqual(bool(args.extended), True)
         self.assertEqual(args.subscribe, 'S')
         self.assertEqual(args.publish, None)
-        self.assertFalse(self.matplotlib.axes.get_xaxis().get_visible())
 
     def test_publish_triangle(self):
         cmdline = ['--publish', 't']

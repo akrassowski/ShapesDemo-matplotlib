@@ -20,8 +20,8 @@ import rti.connextdds as dds
 # The generated <datatype>.py class file should be included here
 from ShapeTypeExtended import ShapeType, ShapeTypeExtended
 
-from Connext import Connext
-from Shape import Shape
+from connext import Connext
+from shape import Shape
 
 LOG = logging.getLogger(__name__)
 

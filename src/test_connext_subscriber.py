@@ -4,7 +4,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from ConnextSubscriber import ConnextSubscriber
+from connext_subscriber import ConnextSubscriber
 # pylint: disable=missing-function-docstring
 
 class Test(unittest.TestCase):

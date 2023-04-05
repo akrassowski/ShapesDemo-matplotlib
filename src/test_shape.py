@@ -2,7 +2,7 @@
 """Tests for Shape"""
 import unittest
 from unittest.mock import MagicMock
-from Shape import Shape, COLOR_MAP
+from shape import Shape, COLOR_MAP
 
 # pylint: disable=missing-function-docstring, too-many-public-methods
 class Test(unittest.TestCase):
