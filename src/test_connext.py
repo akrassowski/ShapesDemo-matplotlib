@@ -35,6 +35,7 @@ class Test(unittest.TestCase):
         self.assertEqual(center_x, 156)
         self.assertEqual(center_y, 48)
 
+    # pylint: disable=protected-access
     def test_get_center_triangle(self):
         triangle_points = [[128, 265], [143, 235], [113, 235], [128, 265]]
         center_x, center_y = self.connext._get_center(triangle_points)

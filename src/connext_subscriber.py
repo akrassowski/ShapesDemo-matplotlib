@@ -54,7 +54,7 @@ class ConnextSubscriber(Connext):
 
     def _init_get_topic(self, which, config):
         """get a Content Filtered or normal Topic"""
-        topic = self.stopic_dic[which]
+        topic = self.topic_dic[which]
         cfxy = config[which].get('content_filter_xy')
         if cfxy:
             topic = self._init_content_filter_xy(topic, which, cfxy)
@@ -139,7 +139,7 @@ class ConnextSubscriber(Connext):
                 data=data,
                 extended=self.args.extended
             )
-        
+
         def _fixup_edges(self, which, color, prev_ix, poly_key):
             """helper to change 2nd instance's edge"""
             prev_poly_key = self.form_poly_key(which, color, prev_ix)
@@ -183,7 +183,7 @@ class ConnextSubscriber(Connext):
 
         shape.set_poly_center(poly, which, shape.get_points())
         poly.set(lw=self.matplotlib.WIDE_EDGE_LINE_WIDTH, zorder=shape.zorder)
-        _fixup_edges(self, which, shape.color, inst.get_prev_ix(), poly_key) 
+        _fixup_edges(self, which, shape.color, inst.get_prev_ix(), poly_key)
 
     def _mark_gone(self, gone_guid):
         """add a gone multistep line Xing the shape"""

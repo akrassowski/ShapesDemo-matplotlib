@@ -214,7 +214,6 @@ class Test(unittest.TestCase):
         self.assertIsNotNone(c_cfg)
         self.assertEqual(c_cfg.get('content_filter_xy')[0][1], 2)
 
-        
     def test_get_sub_config(self):
         config = """{"sub": { "circle": {}, "square": {}}}"""
         config = """{"sub": { "circle": {}}, "sub": {"square": {}}}"""
@@ -265,18 +264,18 @@ class Test_normalize_fill(unittest.TestCase):
         self.assertEqual(result, computed)
 
 def test_normalized_fill_error(self):
-        """Ensure bad values raise ValueError"""
-        with self.assertRaises(ValueError):
-            _ = self.parser.normalize_fill("3")
+    """Ensure bad values raise ValueError"""
+    with self.assertRaises(ValueError):
+        _ = self.parser.normalize_fill("3")
 
-        with self.assertRaises(ValueError):
-            _ = self.parser.normalize_fill(2.2)
+    with self.assertRaises(ValueError):
+        _ = self.parser.normalize_fill(2.2)
 
-        with self.assertRaises(ValueError):
-            _ = self.parser.normalize_fill(-1)
+    with self.assertRaises(ValueError):
+        _ = self.parser.normalize_fill(-1)
 
-        with self.assertRaises(ValueError):
-            _ = self.parser.normalize_fill(4)
+    with self.assertRaises(ValueError):
+        _ = self.parser.normalize_fill(4)
 
 class Test_normalize_shape(unittest.TestCase):
     """Parameter test for normalize_shape functions"""

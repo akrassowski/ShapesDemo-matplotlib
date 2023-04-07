@@ -14,6 +14,8 @@
 import logging
 import os
 
+from matplotlib import rcParams
+
 LOG = logging.getLogger(__name__)
 
 try:
@@ -59,8 +61,6 @@ class Matplotlib:
             # text = self.fig.suptitle(args.subtitle, fontproperties=font_props)
             self.fig.suptitle(args.subtitle, backgroundcolor='w')
 
-        # if args.graph_text:  # TODO: list of xy and Text to place on graph in bkgnd
-
         # hide the axis ticks/subticks/labels
         self.axes.use_sticky_edges = False
         if args.ticks:
@@ -71,6 +71,7 @@ class Matplotlib:
             # remove margin
             plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
 
+        self.init_text(args.text)
         self.init_set_position(args.position)
         self.init_show_image(image_filename)
 
@@ -123,6 +124,38 @@ class Matplotlib:
             abox = AnnotationBbox(imagebox, (0.5, 0.5),
                                   xycoords='axes fraction', bboxprops={'lw':0})
             self.axes.add_artist(abox)
+
+    @staticmethod
+    def get_param_from_iterable(iter, ix, default_):
+        return iter[ix] if len(iter) >= ix + 1 else default_
+
+    def init_text(self, text_arg):
+        """Place the text at the location"""
+        if text_arg is None:
+            return
+        def add_text(self, text_arg):
+            try:
+                vals = text_arg.split(' ')
+                x, y = float(vals[0]), float(vals[1])
+                fontdict = {
+                    'color': self.get_param_from_iterable(vals, 3, rcParams['text.color']),
+                    'size': self.get_param_from_iterable(vals, 4, rcParams['font.size']),
+                    'style': self.get_param_from_iterable(vals, 5, rcParams['font.style']),
+                    'weight': self.get_param_from_iterable(vals, 6, rcParams['font.weight']),
+                    'zorder': 100
+                }
+                self.plt.text(x, y, vals[2], fontdict=fontdict)
+            except Exception as exc:
+                msg = 'text argument must be a quoted string, i.e.: "50 70 hello green 8 italic"'
+                help = 'text values: x y text [color:black] [size:10] [style:normal] [weight:normal]'
+                raise ValueError(f'invalid text: {text_arg}\n{msg}\n{help}')
+        LOG.info(f"{text_arg=}")
+        if ',' in text_arg:
+            split_text = text_arg.split(',')
+            for text_ in split_text:
+                add_text(self, text_.strip())
+        else:
+            add_text(self, text_arg)
 
     def flip_y(self, y):
         """flip y coordinate to swich from SD to MPL"""

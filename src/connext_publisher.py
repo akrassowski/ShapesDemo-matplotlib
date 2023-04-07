@@ -60,8 +60,6 @@ Polygon MPL - matplotlib object used to graphically display the shape
    0 50 100 150 200 240
 """
 
-DELIM = ';'
-
 class ConnextPublisher(Connext):
     """Publish only 1 shape for now"""
 
@@ -71,39 +69,28 @@ class ConnextPublisher(Connext):
         #writer_qos = self.qos_provider.datawriter_qos  ## TODO: use me
         self.publisher = dds.Publisher(self.participant_with_qos)
         possibly_log_qos(self.args.log_qos, self.publisher)
-        ##self.pub_dic_list = []  # defaults will be keyd by just shape; actual will be shape-color
         self.shape_dic = {}  # which: Shape
         self.sample_dic = {}  # which-color: latest-published-sample
         self.writer_dic = {}  # which: dataWriter
-        self.pub_key_count = 1
         for config in config_list:
-            #LOG.debug(f'{self.stopic_dic=} \n{self.participant=}')
-            #shape, color = self.key_to_topic_and_color(key)
-            LOG.info(f'{config_list=}')
+            #LOG.debug(f'{self.topic_dic=} \n{self.participant=}')
+            LOG.info('config:%s', config)
             key = config['which']
-            self.writer_dic[key] = dds.DataWriter(self.publisher, self.stopic_dic[key], self.rw_qos_provider.datawriter_qos)
+            self.writer_dic[key] = dds.DataWriter(
+                self.publisher, self.topic_dic[key], self.rw_qos_provider.datawriter_qos)
             possibly_log_qos(self.args.log_qos, self.writer_dic[key])
         self.pub_config_list = config_list
-        LOG.debug(f'ConnextPublisher starting: pub_config_list: {pformat(self.pub_config_list)} {self.writer_dic=}')
-
-    @staticmethod
-    def key_to_topic_and_color(text):
-        """@return tuple of topic (which) and color"""
-        result = text.split(DELIM)
-        return result if len(result) > 1 else (result[0], 'BLUE')
+        LOG.debug('Pub starting - pub_config_list: %s %s', pformat(config_list), self.writer_dic)
 
     @staticmethod
     def form_pub_key(normalized_shape, normalized_color):
         """format and return a publisher key"""
-        return f'{normalized_shape}{DELIM}{normalized_color}'
+        return f'{normalized_shape}-{normalized_color}'
 
     def create_default_sample(self, pub_dic):
         """use the defaults to create a sample"""
         LOG.info('pub_dic=%s', pub_dic)
-        #which = pub_dic['which']
-
         sample = ShapeTypeExtended() if self.args.extended else ShapeType()
-        #default = pub_dic  # just shape for defaults
         LOG.info(pub_dic)
         sample.x, sample.y = pub_dic['xy']
         sample.color = pub_dic['color']
@@ -120,7 +107,6 @@ class ConnextPublisher(Connext):
     def publish_sample(self, pub_dic):
         """publish a single sample"""
         which = pub_dic['which']  # only 1 key for now
-        #key = self.form_pub_key(which, pub_dic.get('color', 'BLUE'))  # TODO: refactor defaults?
         key = self.form_pub_key(which, pub_dic.get('color'))  # TODO: refactor defaults?
         self.sample_counter.update([f'{key}-write'])
         sample = self.sample_dic.get(key)
@@ -188,10 +174,10 @@ class ConnextPublisher(Connext):
         return self.poly_dic.values()
 
     def __repr__(self):
-        text = (f'<ConnextPublisher:\n' +
+        return ('<ConnextPublisher:\n' +
                 f'  pub_config_list: {self.pub_config_list}\n' +
                 f'  shapes: {self.shape_dic}\n' +
-                f'  samples: {self.sample_dic}\n{self.writer_dic=}')
+                f'  samples: {self.sample_dic}\n' +
+                f'  writers: {self.writer_dic}' +
+                '> ')
         #self.publisher = dds.Publisher(self.participant_with_qos)
-        #self.pub_key_count = 1
-        return f'{text}> '

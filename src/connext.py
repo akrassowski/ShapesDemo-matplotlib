@@ -58,26 +58,14 @@ class Connext(ABC):
         possibly_log_qos(self.args.log_qos, self.participant_qos)
 
         self.participant_with_qos = dds.DomainParticipant(args.domain_id, self.participant_qos)
-        ##self.participant_with_qos = dds.DomainParticipant(args.domain_id, provider)
-        #
-        # participant_qos = dds.QosProvider.default.participant_qos_from_profile(
-            #f'{args.qos_lib}::{args.qos_profile}')
-        #type_name = "ShapeTypeExtended" if args.extended else "ShapeType"
-        type_name = "ShapeTypeExtended"
-        provider_type = self.qos_provider.type(type_name)
-        self.topic_dic = {
-            'C': dds.DynamicData.Topic(self.participant, "Circle", provider_type),
-            'S': dds.DynamicData.Topic(self.participant, "Square", provider_type),
-            'T': dds.DynamicData.Topic(self.participant, "Triangle", provider_type)
-        }
         if args.extended:
-            self.stopic_dic = {
+            self.topic_dic = {
                 'C': dds.Topic(self.participant_with_qos, "Circle", ShapeTypeExtended),
                 'S': dds.Topic(self.participant_with_qos, "Square", ShapeTypeExtended),
                 'T': dds.Topic(self.participant_with_qos, "Triangle", ShapeTypeExtended)
             }
         else:
-            self.stopic_dic = {
+            self.topic_dic = {
                 'C': dds.Topic(self.participant_with_qos, "Circle", ShapeType),
                 'S': dds.Topic(self.participant_with_qos, "Square", ShapeType),
                 'T': dds.Topic(self.participant_with_qos, "Triangle", ShapeType)
@@ -96,6 +84,7 @@ class Connext(ABC):
         qos_file = cwd + qos_file[1:] if qos_file[0] == '.' else qos_file
         return dds.QosProvider(qos_file, f'{self.args.qos_lib}::{self.args.qos_profile}')
 
+    # marking methods are currently only used by Subscriber; could be relocated
     @staticmethod
     def _get_center(points):
         min_x = max_x = points[0][0]
@@ -123,9 +112,15 @@ class Connext(ABC):
             return self._mark_line(center, shape, poly_key, zorder)
         raise NotImplementedError(f'non-X mark: {the_char}')
 
-    def _get_points(self, center, shape, poly_key):
+    def _get_x_points(self, center, shape, poly_key):
         """helper to get the vertices of the X"""
-        if shape.which != 'C':
+        if shape.which == 'C':
+            # top-left, bottom-right, center, top_right, bottom-left
+            x, y = center
+            delta = sqrt((shape.size ** 2) / 2)
+            lt_x, rt_x, tp_y, bt_y = x - delta, x + delta, y + delta, y - delta
+            endpoints = [[lt_x, tp_y], [rt_x, bt_y], center, [rt_x, tp_y], [lt_x, bt_y]]
+        else:  # non-Circle
             poly = self.poly_dic[poly_key]
             points = self.matplotlib.get_points(poly)
             if shape.which == 'S':
@@ -136,19 +131,13 @@ class Connext(ABC):
                 endpoints = [points[0], center, points[1], center, points[2]]
             else:
                 raise ValueError(f'Shape must be one of: CST not {shape.which}')
-        else:  # Circle
-            # top-left, bottom-right, center, top_right, bottom-left
-            x, y = center
-            delta = sqrt((shape.size ** 2) / 2)
-            lt_x, rt_x, tp_y, bt_y = x - delta, x + delta, y + delta, y - delta
-            endpoints = [[lt_x, tp_y], [rt_x, bt_y], center, [rt_x, tp_y], [lt_x, bt_y]]
         return endpoints
 
     def _mark_line(self, center, shape, poly_key, zorder):
         """Mark an X as a multi-step line"""
-    
+
         _, edge_color = shape.face_and_edge_color_code()
-        endpoints = self._get_points(center, shape, poly_key)
+        endpoints = self._get_x_points(center, shape, poly_key)
         key = f'{poly_key}-gone'
         line = self.matplotlib.create_line(endpoints, color=edge_color, zorder=zorder)
         LOG.debug(f'{key=} {endpoints=} {edge_color=} {zorder=} {line=}')
