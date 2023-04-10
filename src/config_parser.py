@@ -8,7 +8,7 @@
 # This code contains trade secrets of Real-Time Innovations, Inc.             #
 ###############################################################################
 
-"""Parses a config file"""
+"""Produce a config by parsing a config file or from the cmd-line"""
 
 # python imports
 import copy
@@ -299,12 +299,12 @@ class ConfigParser:
                 config[which] = defaults
         elif parsed_args.publish:
             is_pub = True
-            for which in parsed_args.publish:
+            for ix, which in enumerate(parsed_args.publish):
                 defaults, _ = self.get_pub_config(default=True)
                 config.update(defaults)
                 config['which'] = which
-                self.pub_list.append(config)
-                LOG.debug(config["which"])
+                config['delta_xy'] = [config['delta_xy'][0] + ix, config['delta_xy'][1] + ix]
+                self.pub_list.append(copy.copy(config))
             config = self.pub_list
         else:
             LOG.error("Must run as either publisher or subscriber, terminating")
