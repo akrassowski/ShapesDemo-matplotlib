@@ -43,7 +43,6 @@ PUB_EXAMPLE = textwrap.dedent("""
       "pub": {
         "circle": {
           "delta_xy": [3, 4],
-          "xy": [80, 10]
         },
         "square": {
           "color": "red",
@@ -68,10 +67,12 @@ SUB_EXAMPLE = textwrap.dedent("""
     {
       "sub": {
         "circle": {
-          "content_filter_color": "BLUE"
+          "content_filter_color": "BLUE",
+          "content_filter_include": 1
         },
         "square": {
-          "content_filter_xy": [[0, 135], [240, 270]]
+          "content_filter_xy": [[0, 135], [240, 270]],
+          "content_filter_include": 0
         }
       }
     }""")

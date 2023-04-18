@@ -77,6 +77,9 @@ class ConfigParser:
         self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
                                key='content_filter_color', value=None,
                                help_='Filter for a specific color')
+        self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
+                               key='content_filter_include', value=True,
+                               help_='Specify filter mode, 0 to exclude [1] to include."')
 
     @staticmethod
     # pylint: disable=too-many-arguments
@@ -120,14 +123,19 @@ class ConfigParser:
         return txt[0:4] == 'FILL'
 
     @staticmethod
-    def is_content_filter_color(txt):
+    def is_content_filter_color(u_txt):
         """@return True iff content filter is specified"""
-        return 'FILTER_COLOR' in txt.upper()
+        return 'FILTER_COLOR' in u_txt
 
     @staticmethod
-    def is_content_filter_xy(txt):
+    def is_content_filter_xy(u_txt):
         """@return True iff content filter is specified"""
-        return 'FILTER_XY' in txt.upper()
+        return 'FILTER_XY' in u_txt
+
+    @staticmethod
+    def is_content_filter_include(u_txt):
+        """@return True iff content filter is specified"""
+        return 'FILTER_INCLUDE' in u_txt
 
     @staticmethod
     def normalize_fill(value):  # TODO use ShapeTypeExtended intEnum
@@ -149,11 +157,13 @@ class ConfigParser:
         return normalized
 
     @staticmethod
-    def unused_normalize_bool(u_value):
+    def normalize_bool(value):
         """Allow 'False' and '0' to be False"""
-        normalized = bool(u_value)
-        if u_value in ('FALSE', '0'):
-            normalized = False
+        normalized = bool(value)
+        if isinstance(value, str):
+            u_value = value.upper()
+            if u_value in ('FALSE', '0'):
+                normalized = False
         return normalized
 
     @staticmethod
@@ -240,10 +250,13 @@ class ConfigParser:
             self.sub_dic[n_shape] = copy.copy(self.sub_default_dic)  # ensures key is present
             for attr in cfg[shape].keys():
                 value = cfg[shape][attr]
-                if self.is_content_filter_xy(attr):
+                attr_upper = attr.upper()
+                if self.is_content_filter_xy(attr_upper):
                     self.sub_dic[n_shape]['content_filter_xy'] = value
-                elif self.is_content_filter_color(attr):
+                elif self.is_content_filter_color(attr_upper):
                     self.sub_dic[n_shape]['content_filter_color'] = value.upper()
+                elif self.is_content_filter_include(attr_upper):
+                    self.sub_dic[n_shape]['content_filter_include'] = self.normalize_bool(value)
         LOG.info('sub_dic: %s', self.sub_dic)
 
     def parse_one_pub(self, which, cfg):

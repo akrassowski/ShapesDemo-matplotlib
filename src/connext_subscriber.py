@@ -69,7 +69,7 @@ class ConnextSubscriber(Connext):
         """handle filter region with top-left and bottom-right specified"""
         hatch_pattern = { 'C': 'o', 'T': '/', 'S': '+' }
         if in_ex[0:2] == 'in':
-            expr = "x >= %0 AND y >= %1 AND x <= %2 and y <= %3"
+            expr = "x > %0 AND y > %1 AND x < %2 and y < %3"
         else:
             expr = "x <= %0 AND y <= %1 AND x >= %2 and y >= %3"
         params = [str(n) for sublist in cfxy for n in sublist]
@@ -93,7 +93,6 @@ class ConnextSubscriber(Connext):
         if in_ex[0:2] != 'in':
             expr = "NOT " + expr
         params = [f"'{cf_color}'"]  # doubly-quoted string is needed, i.e. ["'RED'"]
-        breakpoint()
         LOG.info(f'filtering for {expr=} {params=} {in_ex=}')
         return dds.ContentFilteredTopic(topic, f"CFT-{which}-{in_ex}", dds.Filter(expr, params))
 
