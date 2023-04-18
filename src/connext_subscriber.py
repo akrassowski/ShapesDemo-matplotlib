@@ -55,28 +55,32 @@ class ConnextSubscriber(Connext):
     def _init_get_topic(self, which, config):
         """get a Content Filtered or normal Topic"""
         topic = self.topic_dic[which]
+        in_ex = ('in' if config[which].get('content_filter_include', True) else 'ex') + 'clusive'
         cfxy = config[which].get('content_filter_xy')
         if cfxy:
-            topic = self._init_content_filter_xy(topic, which, cfxy)
+            topic = self._init_content_filter_xy(topic, which, cfxy, in_ex)
         else:
-            cfcolor = config[which].get('content_filter_color')
-            if cfcolor:
-                topic = self._init_content_filter_color(topic, which, cfcolor)
+            cf_color = config[which].get('content_filter_color')
+            if cf_color:
+                topic = self._init_content_filter_color(topic, which, cf_color, in_ex)
         return topic
 
-    def _init_content_filter_xy(self, topic, which, cfxy):
+    def _init_content_filter_xy(self, topic, which, cfxy, in_ex):
         """handle filter region with top-left and bottom-right specified"""
         hatch_pattern = { 'C': 'o', 'T': '/', 'S': '+' }
-        expr = "x >= %0 AND y >= %1 AND x <= %2 and y <= %3"
+        if in_ex[0:2] == 'in':
+            expr = "x >= %0 AND y >= %1 AND x <= %2 and y <= %3"
+        else:
+            expr = "x <= %0 AND y <= %1 AND x >= %2 and y >= %3"
         params = [str(n) for sublist in cfxy for n in sublist]
-        topic = dds.ContentFilteredTopic(topic, f"CFTxy-{which}", dds.Filter(expr, params))
+        topic = dds.ContentFilteredTopic(topic, f"CFTxy-{which}-{in_ex}", dds.Filter(expr, params))
         anchor = (
             min(cfxy[0][0], cfxy[1][0]),
             #min(self.matplotlib.flip_y(cfxy[0][1]), self.matplotlib.flip_y(cfxy[1][1]))
             min(cfxy[0][1], cfxy[1][1])
         )
         extents = abs(cfxy[0][1] - cfxy[1][1]), abs(cfxy[0][0] - cfxy[1][0])
-        LOG.info(f'filtering for {expr=} {params=} {anchor=} {extents=}')
+        LOG.info(f'filtering for {expr=} {params=} {anchor=} {extents=} {in_ex=}')
 
         colors = COLOR_MAP['BLACK'], COLOR_MAP['GREY']
         rect = self.matplotlib.create_rectangle(anchor, extents, colors)
@@ -84,11 +88,14 @@ class ConnextSubscriber(Connext):
         self.matplotlib.axes.add_patch(rect)
         return topic
 
-    def _init_content_filter_color(self, topic, which, cfcolor):
+    def _init_content_filter_color(self, topic, which, cf_color, in_ex):
         expr = "color MATCH %0"
-        params = [f"'{cfcolor}'"]  # doubly-quoted string is needed, i.e. ["'RED'"]
-        LOG.debug(f'filtering for {expr=} {params=}')
-        return dds.ContentFilteredTopic(topic, f"CFTcolor-{which}", dds.Filter(expr, params))
+        if in_ex[0:2] != 'in':
+            expr = "NOT " + expr
+        params = [f"'{cf_color}'"]  # doubly-quoted string is needed, i.e. ["'RED'"]
+        breakpoint()
+        LOG.info(f'filtering for {expr=} {params=} {in_ex=}')
+        return dds.ContentFilteredTopic(topic, f"CFT-{which}-{in_ex}", dds.Filter(expr, params))
 
     def get_max_samples_per_instance(self, which):
         """ helper to fetch depth from a reader"""

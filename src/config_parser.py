@@ -69,7 +69,7 @@ class ConfigParser:
         self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
             key='angle', value=0, help_='Starting angle for ShapeExtendedType')
         self._default_and_help(self.pub_default_dic, self.pub_help_dic, self.pub_attr,
-            key='delta_angle', value=0, help_='Rotation change per update for ShapeExtendedType')
+            key='delta_angle', value=2, help_='Rotation change per update for ShapeExtendedType')
 
         self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
                                key='content_filter_xy', value=None,
