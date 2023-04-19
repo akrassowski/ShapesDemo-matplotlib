@@ -13,10 +13,10 @@
 # python imports
 import argparse
 import logging
-from os import remove
 import textwrap
 # don't log here, since loglevel arg isn't set yet
 # LOG = logging.getLogger(__name__)
+TWO_SPACES, ONE_SPACE = '  ', ' '
 
 # pylint: disable=too-few-public-methods
 class BlankLinesHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -45,12 +45,11 @@ class ArgParser:
 
         def remove_extra_whitespace(text):
             """cleanup for parsing and terser logging"""
-            TWO_SPACES, ONE_SPACE = '  ', ' '
             text = text.replace('\n', '').replace('\t', '')  # remove new-lines and tabs
             while TWO_SPACES in text:
                 text = text.replace(TWO_SPACES, ONE_SPACE)
             return text
-    
+
         def pair2str(pair):
             """show x,y as 'x y'"""
             return f'{pair[0]} {pair[1]}'
