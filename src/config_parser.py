@@ -17,6 +17,7 @@ import logging
 from pprint import pformat
 from io import StringIO
 import sys
+import textwrap
 
 from shape import COLOR_MAP
 
@@ -73,7 +74,9 @@ class ConfigParser:
 
         self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
                                key='content_filter_xy', value=None,
-                               help_='Filter region tuple (top-left, bottom-right vertices)')
+                               help_=textwrap.dedent("""Filter region defined by x, y tuples [None]
+                               Tuples define the (top-left, bottom-right) vertices.
+                               x, y values are inclusive to the filter region."""))
         self._default_and_help(self.sub_default_dic, self.sub_help_dic, self.sub_attr,
                                key='content_filter_color', value=None,
                                help_='Filter for a specific color')

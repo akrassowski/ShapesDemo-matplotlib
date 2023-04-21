@@ -110,10 +110,6 @@ class Connext(ABC):
             except AttributeError:
                 LOG.log(self.args.log_qos, "No qos attribute \n" + entity.to_string())
 
-    def form_gone_key(self, poly_key):
-        """return the formed key for a gone item"""
-        return f'{poly_key}-{self.GONE}'
-
     def _mark(self, shape, poly_key, the_char):
         """helper to mark or unmark the state with the passed character"""
         LOG.info(f'{poly_key=} {shape=} {the_char=}')
