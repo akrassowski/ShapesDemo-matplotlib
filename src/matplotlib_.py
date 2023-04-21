@@ -50,7 +50,6 @@ class Matplotlib:
         # create the Figure - SECOND
         #self.fig, self.axes = self.plt.subplots(figsize=args.figure_xy, num=args.box_title)
         self.fig, self.axes = self.plt.subplots(num=args.box_title)
-        self.fig.set_figwidth(args.figure_xy[0])
         self.fig.set_figheight(args.figure_xy[1])
         self.axes.set_xlim((0, args.graph_xy[0]))
         self.axes.set_ylim((0, args.graph_xy[1]))
@@ -64,8 +63,10 @@ class Matplotlib:
         # hide the axis ticks/subticks/labels
         self.axes.use_sticky_edges = False
         if args.ticks:
-            self.fig.set_figwidth(args.figure_xy[0]*1.3)
+            if args.figure_xy[0] == 2.375:
+            	self.fig.set_figwidth(args.figure_xy[0]*1.3)
         else:
+            self.fig.set_figwidth(args.figure_xy[0])
             self.axes.get_xaxis().set_visible(False)
             self.axes.get_yaxis().set_visible(False)
             # remove margin
@@ -97,7 +98,7 @@ class Matplotlib:
 
         if isinstance(position, int):  # when passed int, treat it as slot index
             # Compute the Slots when running multiple instances
-            row, row2 = VGAP+dy, 2*(dy + VGAP) -30
+            row, row2 = dy + VGAP - 58, 2*(dy + VGAP)
             cols = [(ix * dx) + HGAP for ix in range(1,5)]
             # allow for up to 15 slots by index
 
