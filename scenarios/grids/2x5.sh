@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# startup 4 subscribers in the right slots
+# startup 2 rows of 1 publisher + 4 subscribers in the right slots
 
 if [ "$1" == "" ]; then
     DOMAIN=27
@@ -13,7 +13,6 @@ EXE=${TOP_DIR}/src/shapes_demo.py
 COMMON="--domain_id $DOMAIN"
 TOP_ROW="--subtitle Legacy --ShapeType"
 BOTTOM_ROW="--subtitle Extended --ShapeTypeExtended"
-#DTEXT="Domain:${DOMAIN}"
 LEFT="--subscribe S "
 RIGHT="--subscribe CST "
 
