@@ -30,7 +30,7 @@ def get_cwd(file):
 
 def possibly_log_qos(qos_log_level, entity):
     """log the qos at selected log level on its own"""
-    if qos_log_level is not None:
+    if qos_log_level:
         try:
             LOG.log(qos_log_level, '\n' + entity.qos.to_string())
         except AttributeError:
